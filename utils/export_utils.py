@@ -13,6 +13,10 @@ from utils.file_utils import build_trip_photo_filename, copy_image_as_jpg
 COLUMN_MAP = {
     "id": "编号",
     "username": "用户",
+    "gender": "性别",
+    "unit": "单位",
+    "department": "部门",
+    "team": "班组",
     "plate": "车牌号",
     "date": "日期",
     "start_mileage": "出发里程",
@@ -23,13 +27,9 @@ COLUMN_MAP = {
     "start_address": "出发地点",
     "end_address": "回场地点",
     "status": "状态",
-    "gender": "性别",
-    "unit": "单位",
-    "department": "部门",
-    "team": "班组",
-    "warning": "异常提示",
     "start_photo": "出发照片",
     "end_photo": "回场照片",
+    "warning": "异常提示",
 }
 
 # openpyxl / Excel 不允许写入部分控制字符，否则会触发 Internal Server Error。
