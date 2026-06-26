@@ -17,7 +17,8 @@
         <th>班组</th>
         <th>当前角色</th>
         <th>设置权限</th>
-        <th>创建时间</th>
+        <th>操作</th>
+  <th>创建时间</th>
       </tr>
     </thead>
     <tbody>
@@ -45,12 +46,31 @@
               <option value="管理员" {% if u.role == '管理员' %}selected{% endif %}>管理员</option>
             </select>
             <button class="btn btn-primary btn-sm">保存</button>
-          </form>
-        </td>
-        <td>{{ u.created_at or '-' }}</td>
+          </form></td>
+<td>
+ {% if u.role == '司机' %}
+ <form method="post"
+       action="{{ url_for('admin_delete_user') }}"
+       class="d-flex gap-2"
+       onsubmit="return confirm('确定删除司机 {{ u.username }} 吗？此操作不可恢复，历史行程记录将保留用于审计。');">
+  <input type="hidden" name="user_id" value="{{ u.id }}">
+  <input type="password"
+         name="admin_password"
+         class="form-control form-control-sm"
+         placeholder="管理员密码"
+         required
+         autocomplete="current-password"
+         style="min-width: 130px;">
+  <button class="btn btn-outline-danger btn-sm" type="submit">删除</button>
+ </form>
+ {% else %}
+ <span class="text-muted small">管理员不可删除</span>
+ {% endif %}
+</td>
+<td>{{ u.created_at or '-' }}</td>
       </tr>
       {% else %}
-      <tr><td colspan="10" class="text-center text-muted">暂无用户</td></tr>
+      <tr><td colspan="11" class="text-center text-muted">暂无用户</td></tr>
       {% endfor %}
     </tbody>
   </table>

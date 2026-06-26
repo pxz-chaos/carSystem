@@ -26,6 +26,9 @@
 
         <div class="mt-4 text-end">
           <a class="btn btn-outline-secondary" href="{{ url_for('dashboard') }}">返回首页</a>
+  <a class="btn btn-outline-danger ms-2"
+     href="{{ url_for('logout') }}"
+     onclick="return confirm('确定要注销当前账号登录吗？');">注销账号</a>
         </div>
       </div>
     </div>

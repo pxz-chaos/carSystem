@@ -17,6 +17,9 @@ from flask import (
 from config import APP_DEBUG, APP_HOST, APP_PORT, SECRET_KEY, SMS_CODE_TTL_SECONDS, UPLOAD_DIR, EXPORT_DIR, DATA_RETENTION_MONTHS, DATA_CLEANUP_AUTO_ENABLED, DATA_CLEANUP_CHECK_INTERVAL_SECONDS, DATA_CLEANUP_BACKUP_BEFORE_DELETE, DATA_CLEANUP_DELETE_PHOTOS
 from dao.record_dao import (
     create_user,
+    delete_driver_user,
+    get_user_by_id,
+    verify_user_password,
     get_all_records,
     get_all_users,
     get_user,
@@ -518,6 +521,39 @@ def create_app():
 
         users = get_all_users()
         return render_template("admin_users.html", users=users)
+
+    @app.route("/admin/users/delete", methods=["POST"])
+    @admin_required
+    def admin_delete_user():
+        user_id = request.form.get("user_id", "").strip()
+        admin_password = request.form.get("admin_password", "")
+
+        try:
+            if not user_id.isdigit():
+                raise ValueError("请选择要删除的司机")
+            if not admin_password:
+                raise ValueError("请输入当前管理员密码")
+
+            if not verify_user_password(session.get("username", ""), admin_password):
+                raise ValueError("管理员密码错误，删除操作已取消")
+
+            target = get_user_by_id(int(user_id))
+            if not target:
+                raise ValueError("用户不存在或已被删除")
+            if target.get("username") == session.get("username"):
+                raise ValueError("不能删除当前登录账号")
+            if target.get("role") != "司机":
+                raise ValueError("只能删除司机账号，不能删除管理员账号")
+
+            if not delete_driver_user(int(user_id)):
+                raise ValueError("删除失败：用户不存在或不是司机账号")
+
+            flash(f"已删除司机账号：{target.get('username')}。历史行程记录已保留，便于后续审计。", "success")
+        except Exception as exc:
+            flash(str(exc), "danger")
+
+        return redirect(url_for("admin_users"))
+
 
     def _write_export_error(exc: Exception) -> None:
         try:

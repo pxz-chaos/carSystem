@@ -25,14 +25,27 @@
                 <li class="nav-item"><a class="nav-link" href="{{ url_for('admin_users') }}">用户权限</a></li>
                 <li class="nav-item"><a class="nav-link" href="{{ url_for('admin_storage') }}">数据维护</a></li>
                 {% endif %}
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('export') }}">导出 Excel</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('export_images') }}">导出图片</a></li>
-            </ul>
-            <a class="navbar-text me-3 text-decoration-none text-light d-inline-flex align-items-center gap-2" href="{{ url_for('profile') }}" title="查看个人信息">
-          <span class="rounded-circle bg-light text-dark d-inline-flex align-items-center justify-content-center" style="width:32px;height:32px;">{{ (session.get('username') or '用')[:1] }}</span>
-          <span>{{ session.get('username') }} / {{ session.get('role') }}</span>
-        </a>
-            <a class="btn btn-outline-light btn-sm" href="{{ url_for('logout') }}">退出</a>
+</ul>
+            <div class="dropdown ms-lg-3">
+ <a class="navbar-text text-decoration-none text-light d-inline-flex align-items-center gap-2 dropdown-toggle"
+    href="#"
+    role="button"
+    data-bs-toggle="dropdown"
+    aria-expanded="false"
+    title="账号菜单">
+  <span class="rounded-circle bg-light text-dark d-inline-flex align-items-center justify-content-center" style="width:32px;height:32px;">{{ (session.get('username') or '用')[:1] }}</span>
+  <span>{{ session.get('username') }} / {{ session.get('role') }}</span>
+ </a>
+ <ul class="dropdown-menu dropdown-menu-end">
+  <li><a class="dropdown-item" href="{{ url_for('profile') }}">个人信息</a></li>
+  <li><hr class="dropdown-divider"></li>
+  <li>
+   <a class="dropdown-item text-danger"
+      href="{{ url_for('logout') }}"
+      onclick="return confirm('确定要注销当前账号登录吗？');">注销账号</a>
+  </li>
+ </ul>
+ </div>
             {% endif %}
         </div>
     </div>

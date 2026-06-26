@@ -519,6 +519,62 @@ def update_user_role(username: str, role: str) -> bool:
     conn.close()
     return changed
 
+
+def verify_user_password(username: str, password: str) -> bool:
+    username = (username or "").strip()
+    if not username or password is None:
+        return False
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT 1 FROM users WHERE username=? AND password_hash=? LIMIT 1",
+        (username, _hash_password(password)),
+    )
+    row = cur.fetchone()
+    conn.close()
+    return row is not None
+
+def get_user_by_id(user_id: int) -> Optional[Dict[str, Any]]:
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id, username, role, phone, gender, unit, department, team, unit_other, department_other, team_other, created_at FROM users WHERE id=?",
+        (int(user_id),),
+    )
+    row = cur.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+def user_has_running_trip(username: str) -> bool:
+    username = (username or "").strip()
+    if not username:
+        return False
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT 1 FROM trip_records WHERE username=? AND status='未回场' LIMIT 1",
+        (username,),
+    )
+    row = cur.fetchone()
+    conn.close()
+    return row is not None
+
+def delete_driver_user(user_id: int) -> bool:
+    target = get_user_by_id(int(user_id))
+    if not target:
+        return False
+    if target.get("role") != "司机":
+        raise ValueError("只能删除司机账号")
+    if user_has_running_trip(target.get("username", "")):
+        raise ValueError("该司机存在未回场行程，请先完成回场登记后再删除")
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM users WHERE id=? AND role='司机'", (int(user_id),))
+    changed = cur.rowcount > 0
+    conn.commit()
+    conn.close()
+    return changed
+
 def create_start_trip(data: Dict[str, Any]) -> int:
     conn = get_conn()
     cur = conn.cursor()
