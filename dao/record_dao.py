@@ -178,15 +178,35 @@ def initial_admin_setup_required() -> bool:
     return (not admin_exists()) or legacy_default_admin_exists()
 
 
-def setup_initial_admin(username: str, password: str, phone: str) -> int:
+def setup_initial_admin(
+    username: str,
+    password: str,
+    phone: str,
+    gender: str = "",
+    unit: str = "",
+    department: str = "",
+    team: str = "",
+    unit_other: str = "",
+    department_other: str = "",
+    team_other: str = "",
+) -> int:
     """
     首次初始化管理员。
     - 新系统：创建第一个管理员；
     - 旧系统：如果存在 admin/admin123，则改成用户自定义账号/密码；
-    - 如果无管理员但已存在同名普通用户，则把该用户升级为管理员并重设密码。
+    - 如果无管理员但已存在同名普通用户，则把该用户升级为管理员并重设密码；
+    - 同步保存管理员的性别、单位、部门、班组，保证用户资料完整。
     """
     username = (username or "").strip()
     phone = (phone or "").strip()
+    gender = (gender or "").strip()
+    unit = (unit or "").strip()
+    department = (department or "").strip()
+    team = (team or "").strip()
+    unit_other = (unit_other or "").strip()
+    department_other = (department_other or "").strip()
+    team_other = (team_other or "").strip()
+
     if not username:
         raise ValueError("请输入管理员用户名")
     if not password:
@@ -194,8 +214,9 @@ def setup_initial_admin(username: str, password: str, phone: str) -> int:
 
     conn = get_conn()
     cur = conn.cursor()
-
+    _ensure_user_columns(cur)
     default_hash = _hash_password(LEGACY_DEFAULT_ADMIN_PASSWORD)
+
     cur.execute(
         f"""
         SELECT id FROM users
@@ -215,7 +236,8 @@ def setup_initial_admin(username: str, password: str, phone: str) -> int:
     else:
         same_phone_row = None
 
-    # 旧版默认管理员存在时，优先改造这个账号；但不能把用户名改成另一个已存在用户。
+    profile_values = (gender, unit, department, team, unit_other, department_other, team_other)
+
     if legacy_row is not None:
         target_id = int(legacy_row[0])
         if same_username_row is not None and int(same_username_row[0]) != target_id:
@@ -227,13 +249,14 @@ def setup_initial_admin(username: str, password: str, phone: str) -> int:
         cur.execute(
             """
             UPDATE users
-            SET username=?, password_hash=?, phone=?, role='管理员'
+            SET username=?, password_hash=?, phone=?, role='管理员',
+                gender=?, unit=?, department=?, team=?,
+                unit_other=?, department_other=?, team_other=?
             WHERE id=?
             """,
-            (username, _hash_password(password), phone, target_id),
+            (username, _hash_password(password), phone, *profile_values, target_id),
         )
     elif same_username_row is not None:
-        # 无管理员时，允许把已有普通用户升级为管理员。
         target_id = int(same_username_row[0])
         if same_phone_row is not None and int(same_phone_row[0]) != target_id:
             conn.close()
@@ -241,10 +264,12 @@ def setup_initial_admin(username: str, password: str, phone: str) -> int:
         cur.execute(
             """
             UPDATE users
-            SET password_hash=?, phone=?, role='管理员'
+            SET password_hash=?, phone=?, role='管理员',
+                gender=?, unit=?, department=?, team=?,
+                unit_other=?, department_other=?, team_other=?
             WHERE id=?
             """,
-            (_hash_password(password), phone, target_id),
+            (_hash_password(password), phone, *profile_values, target_id),
         )
     else:
         if same_phone_row is not None:
@@ -252,17 +277,19 @@ def setup_initial_admin(username: str, password: str, phone: str) -> int:
             raise ValueError("该手机号已被注册")
         cur.execute(
             """
-            INSERT INTO users(username, password_hash, role, phone)
-            VALUES(?,?,?,?)
+            INSERT INTO users(
+                username, password_hash, role, phone,
+                gender, unit, department, team,
+                unit_other, department_other, team_other
+            ) VALUES(?,?,?,?,?,?,?,?,?,?,?)
             """,
-            (username, _hash_password(password), "管理员", phone),
+            (username, _hash_password(password), "管理员", phone, *profile_values),
         )
         target_id = int(cur.lastrowid)
 
     conn.commit()
     conn.close()
     return int(target_id)
-
 
 def get_user_by_phone(phone: str) -> Optional[Dict[str, Any]]:
     phone = (phone or "").strip()

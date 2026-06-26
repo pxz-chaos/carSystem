@@ -87,7 +87,19 @@ def _validate_register_form(
     if team == "其他" and not (team_other or "").strip():
         raise ValueError("请输入班组")
 
-def _validate_admin_setup_form(username: str, phone: str, password: str, password2: str) -> None:
+def _validate_admin_setup_form(
+    username: str,
+    phone: str,
+    password: str,
+    password2: str,
+    gender: str = "",
+    unit: str = "",
+    department: str = "",
+    team: str = "",
+    unit_other: str = "",
+    department_other: str = "",
+    team_other: str = "",
+) -> None:
     if not USERNAME_RE.match(username or ""):
         raise ValueError("管理员用户名需为2-30位中文、字母、数字或下划线")
     if not PHONE_RE.match(phone or ""):
@@ -100,6 +112,20 @@ def _validate_admin_setup_form(username: str, phone: str, password: str, passwor
     if password.lower() in weak_passwords:
         raise ValueError("管理员密码不能使用默认密码或过弱密码")
 
+    if gender not in GENDER_CHOICES:
+        raise ValueError("请选择管理员性别")
+    if unit not in UNIT_CHOICES:
+        raise ValueError("请选择管理员单位")
+    if department not in DEPARTMENT_CHOICES:
+        raise ValueError("请选择管理员部门")
+    if team not in TEAM_CHOICES:
+        raise ValueError("请选择管理员班组")
+    if unit == "其他" and not (unit_other or "").strip():
+        raise ValueError("请输入管理员单位")
+    if department == "其他" and not (department_other or "").strip():
+        raise ValueError("请输入管理员部门")
+    if team == "其他" and not (team_other or "").strip():
+        raise ValueError("请输入管理员班组")
 
 def create_app():
     app = Flask(__name__)
@@ -187,9 +213,39 @@ def create_app():
             phone = request.form.get("phone", "").strip()
             password = request.form.get("password", "").strip()
             password2 = request.form.get("password2", "").strip()
+            gender = request.form.get("gender", "").strip()
+            unit = request.form.get("unit", "").strip()
+            department = request.form.get("department", "").strip()
+            team = request.form.get("team", "").strip()
+            unit_other = request.form.get("unit_other", "").strip()
+            department_other = request.form.get("department_other", "").strip()
+            team_other = request.form.get("team_other", "").strip()
             try:
-                _validate_admin_setup_form(username, phone, password, password2)
-                setup_initial_admin(username=username, password=password, phone=phone)
+                _validate_admin_setup_form(
+                    username,
+                    phone,
+                    password,
+                    password2,
+                    gender,
+                    unit,
+                    department,
+                    team,
+                    unit_other,
+                    department_other,
+                    team_other,
+                )
+                setup_initial_admin(
+                    username=username,
+                    password=password,
+                    phone=phone,
+                    gender=gender,
+                    unit=unit,
+                    department=department,
+                    team=team,
+                    unit_other=unit_other,
+                    department_other=department_other,
+                    team_other=team_other,
+                )
                 session.clear()
                 flash("管理员账号已设置，请使用你刚设置的账号和密码登录", "success")
                 return redirect(url_for("login"))
