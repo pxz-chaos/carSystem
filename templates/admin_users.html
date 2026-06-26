@@ -1,64 +1,58 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="card shadow-sm">
-    <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <div>
-                <h3 class="mb-0">用户权限管理</h3>
-                <div class="text-muted small">只有管理员可以进入本页。管理员可查看、导出全部司机数据；司机只能查看、导出自己的数据。</div>
-            </div>
-            <a class="btn btn-outline-secondary" href="{{ url_for('records') }}">返回记录</a>
-        </div>
+<h3>用户权限管理</h3>
+<p class="text-muted">只有管理员可以进入本页。管理员可查看、导出全部司机数据；司机只能查看、导出自己的数据。</p>
+<a class="btn btn-outline-secondary btn-sm mb-3" href="{{ url_for('records') }}">返回记录</a>
 
-        <div class="table-responsive">
-            <table class="table table-bordered align-middle">
-                <thead class="table-light">
-                <tr>
-                    <th>ID</th>
-                    <th>用户名</th>
-                    <th>手机号</th>
-                    <th>当前角色</th>
-                    <th style="width: 260px;">设置权限</th>
-                    <th>创建时间</th>
-                </tr>
-                </thead>
-                <tbody>
-                {% for u in users %}
-                <tr>
-                    <td>{{ u.id }}</td>
-                    <td>{{ u.username }}</td>
-                    <td>{{ u.phone or '-' }}</td>
-                    <td>
-                        {% if u.role == '管理员' %}
-                            <span class="badge text-bg-danger">管理员</span>
-                        {% else %}
-                            <span class="badge text-bg-secondary">司机</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <form method="post" class="d-flex gap-2">
-                            <input type="hidden" name="username" value="{{ u.username }}">
-                            <select class="form-select form-select-sm" name="role">
-                                <option value="司机" {% if u.role != '管理员' %}selected{% endif %}>司机</option>
-                                <option value="管理员" {% if u.role == '管理员' %}selected{% endif %}>管理员</option>
-                            </select>
-                            <button class="btn btn-primary btn-sm" type="submit">保存</button>
-                        </form>
-                    </td>
-                    <td>{{ u.created_at or '-' }}</td>
-                </tr>
-                {% else %}
-                <tr><td colspan="6" class="text-center text-muted">暂无用户</td></tr>
-                {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
+<div class="table-responsive">
+  <table class="table table-striped table-bordered align-middle">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>用户名</th>
+        <th>手机号</th>
+        <th>性别</th>
+        <th>单位</th>
+        <th>部门</th>
+        <th>班组</th>
+        <th>当前角色</th>
+        <th>设置权限</th>
+        <th>创建时间</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr>
+        <td>{{ u.id }}</td>
+        <td>{{ u.username }}</td>
+        <td>{{ u.phone or '-' }}</td>
+        <td>{{ u.gender or '-' }}</td>
+        <td>{{ u.unit_other if u.unit == '其他' and u.unit_other else (u.unit or '-') }}</td>
+        <td>{{ u.department_other if u.department == '其他' and u.department_other else (u.department or '-') }}</td>
+        <td>{{ u.team_other if u.team == '其他' and u.team_other else (u.team or '-') }}</td>
+        <td>
+          {% if u.role == '管理员' %}
+            <span class="badge bg-danger">管理员</span>
+          {% else %}
+            <span class="badge bg-secondary">司机</span>
+          {% endif %}
+        </td>
+        <td>
+          <form method="post" class="d-flex gap-2">
+            <input type="hidden" name="username" value="{{ u.username }}">
+            <select class="form-select form-select-sm" name="role">
+              <option value="司机" {% if u.role == '司机' %}selected{% endif %}>司机</option>
+              <option value="管理员" {% if u.role == '管理员' %}selected{% endif %}>管理员</option>
+            </select>
+            <button class="btn btn-primary btn-sm">保存</button>
+          </form>
+        </td>
+        <td>{{ u.created_at or '-' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="10" class="text-center text-muted">暂无用户</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </div>
 {% endblock %}
-
-<script>
-function confirmDelete(){
-  return prompt("请输入管理员密码以确认删除：");
-}
-</script>

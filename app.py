@@ -19,6 +19,7 @@ from dao.record_dao import (
     create_user,
     get_all_records,
     get_all_users,
+    get_user,
     get_user_by_phone,
     initial_admin_setup_required,
     get_running_trip,
@@ -40,10 +41,26 @@ from utils.sms_utils import SMS_PURPOSE_LOGIN, SMS_PURPOSE_RESET, generate_sms_c
 PHONE_RE = re.compile(r"^1\d{10}$")
 USERNAME_RE = re.compile(r"^[A-Za-z0-9_\u4e00-\u9fa5]{2,30}$")
 ADMIN_ROLE_NAMES = {"管理员", "超级管理员", "admin", "administrator"}
+GENDER_CHOICES = {"男", "女"}
+UNIT_CHOICES = {"遵义供电局", "其他"}
+DEPARTMENT_CHOICES = {"变电管理一所", "变电管理二所", "其他"}
+TEAM_CHOICES = {"继保班", "自动化班", "检修一班", "检修二班", "试验一班", "试验二班", "电源班", "智能作业班", "其他"}
 _LAST_AUTO_CLEANUP_CHECK = 0.0
 
 
-def _validate_register_form(username: str, phone: str, password: str, password2: str) -> None:
+def _validate_register_form(
+    username: str,
+    phone: str,
+    password: str,
+    password2: str,
+    gender: str = "",
+    unit: str = "",
+    department: str = "",
+    team: str = "",
+    unit_other: str = "",
+    department_other: str = "",
+    team_other: str = "",
+) -> None:
     if not USERNAME_RE.match(username or ""):
         raise ValueError("用户名需为2-30位中文、字母、数字或下划线")
     if not PHONE_RE.match(phone or ""):
@@ -52,8 +69,20 @@ def _validate_register_form(username: str, phone: str, password: str, password2:
         raise ValueError("密码至少6位")
     if password != password2:
         raise ValueError("两次输入的密码不一致")
-
-
+    if gender not in GENDER_CHOICES:
+        raise ValueError("请选择性别")
+    if unit not in UNIT_CHOICES:
+        raise ValueError("请选择单位")
+    if department not in DEPARTMENT_CHOICES:
+        raise ValueError("请选择部门")
+    if team not in TEAM_CHOICES:
+        raise ValueError("请选择班组")
+    if unit == "其他" and not (unit_other or "").strip():
+        raise ValueError("请输入单位")
+    if department == "其他" and not (department_other or "").strip():
+        raise ValueError("请输入部门")
+    if team == "其他" and not (team_other or "").strip():
+        raise ValueError("请输入班组")
 
 def _validate_admin_setup_form(username: str, phone: str, password: str, password2: str) -> None:
     if not USERNAME_RE.match(username or ""):
@@ -228,9 +257,40 @@ def create_app():
             phone = request.form.get("phone", "").strip()
             password = request.form.get("password", "").strip()
             password2 = request.form.get("password2", "").strip()
+            gender = request.form.get("gender", "").strip()
+            unit = request.form.get("unit", "").strip()
+            department = request.form.get("department", "").strip()
+            team = request.form.get("team", "").strip()
+            unit_other = request.form.get("unit_other", "").strip()
+            department_other = request.form.get("department_other", "").strip()
+            team_other = request.form.get("team_other", "").strip()
             try:
-                _validate_register_form(username, phone, password, password2)
-                create_user(username=username, password=password, phone=phone, role="司机")
+                _validate_register_form(
+                    username,
+                    phone,
+                    password,
+                    password2,
+                    gender,
+                    unit,
+                    department,
+                    team,
+                    unit_other,
+                    department_other,
+                    team_other,
+                )
+                create_user(
+                    username=username,
+                    password=password,
+                    phone=phone,
+                    role="司机",
+                    gender=gender,
+                    unit=unit,
+                    department=department,
+                    team=team,
+                    unit_other=unit_other,
+                    department_other=department_other,
+                    team_other=team_other,
+                )
                 flash("注册成功，请登录", "success")
                 return redirect(url_for("login"))
             except Exception as exc:
@@ -282,6 +342,15 @@ def create_app():
         session.clear()
         flash("已退出登录", "info")
         return redirect(url_for("login"))
+
+    @app.route("/profile")
+    @login_required
+    def profile():
+        user = get_user(session["username"])
+        if not user:
+            flash("用户不存在，请重新登录", "danger")
+            return redirect(url_for("logout"))
+        return render_template("profile.html", user=user)
 
     @app.route("/dashboard")
     @login_required

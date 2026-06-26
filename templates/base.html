@@ -28,7 +28,10 @@
                 <li class="nav-item"><a class="nav-link" href="{{ url_for('export') }}">导出 Excel</a></li>
                 <li class="nav-item"><a class="nav-link" href="{{ url_for('export_images') }}">导出图片</a></li>
             </ul>
-            <span class="navbar-text me-3">{{ session.get('username') }} / {{ session.get('role') }}</span>
+            <a class="navbar-text me-3 text-decoration-none text-light d-inline-flex align-items-center gap-2" href="{{ url_for('profile') }}" title="查看个人信息">
+          <span class="rounded-circle bg-light text-dark d-inline-flex align-items-center justify-content-center" style="width:32px;height:32px;">{{ (session.get('username') or '用')[:1] }}</span>
+          <span>{{ session.get('username') }} / {{ session.get('role') }}</span>
+        </a>
             <a class="btn btn-outline-light btn-sm" href="{{ url_for('logout') }}">退出</a>
             {% endif %}
         </div>

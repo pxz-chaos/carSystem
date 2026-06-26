@@ -270,7 +270,7 @@ def get_user_by_phone(phone: str) -> Optional[Dict[str, Any]]:
         return None
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("SELECT username, role, phone FROM users WHERE phone=? LIMIT 1", (phone,))
+    cur.execute("SELECT id, username, role, phone, gender, unit, department, team, unit_other, department_other, team_other, created_at FROM users WHERE phone=? LIMIT 1", (phone,))
     row = cur.fetchone()
     conn.close()
     return dict(row) if row else None
@@ -414,28 +414,54 @@ def phone_exists(phone: str) -> bool:
     return row is not None
 
 
-def create_user(username: str, password: str, phone: str, role: str = "司机") -> int:
+def create_user(
+    username: str,
+    password: str,
+    phone: str,
+    role: str = "司机",
+    gender: str = "",
+    unit: str = "",
+    department: str = "",
+    team: str = "",
+    unit_other: str = "",
+    department_other: str = "",
+    team_other: str = "",
+) -> int:
     username = (username or "").strip()
     phone = (phone or "").strip()
     if username_exists(username):
         raise ValueError("用户名已存在")
     if phone and phone_exists(phone):
         raise ValueError("手机号已被注册")
-
     conn = get_conn()
     cur = conn.cursor()
     cur.execute(
         """
-        INSERT INTO users(username, password_hash, role, phone)
-        VALUES(?,?,?,?)
+        INSERT INTO users(
+            username, password_hash, role, phone,
+            gender, unit, department, team,
+            unit_other, department_other, team_other
+        )
+        VALUES(?,?,?,?,?,?,?,?,?,?,?)
         """,
-        (username, _hash_password(password), role, phone),
+        (
+            username,
+            _hash_password(password),
+            role,
+            phone,
+            (gender or "").strip(),
+            (unit or "").strip(),
+            (department or "").strip(),
+            (team or "").strip(),
+            (unit_other or "").strip(),
+            (department_other or "").strip(),
+            (team_other or "").strip(),
+        ),
     )
     user_id = cur.lastrowid
     conn.commit()
     conn.close()
     return int(user_id)
-
 
 def reset_password_by_phone(username: str, phone: str, new_password: str) -> bool:
     """
@@ -465,7 +491,7 @@ def reset_password_by_phone(username: str, phone: str, new_password: str) -> boo
 def get_user(username: str) -> Optional[Dict[str, Any]]:
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("SELECT id, username, role, phone, created_at FROM users WHERE username=?", ((username or "").strip(),))
+    cur.execute("SELECT id, username, role, phone, gender, unit, department, team, unit_other, department_other, team_other, created_at FROM users WHERE username=?", ((username or "").strip(),))
     row = cur.fetchone()
     conn.close()
     return dict(row) if row else None
@@ -474,7 +500,7 @@ def get_user(username: str) -> Optional[Dict[str, Any]]:
 def get_all_users() -> List[Dict[str, Any]]:
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("SELECT id, username, role, phone, created_at FROM users ORDER BY id ASC")
+    cur.execute("SELECT id, username, role, phone, gender, unit, department, team, unit_other, department_other, team_other, created_at FROM users ORDER BY id ASC")
     rows = cur.fetchall()
     conn.close()
     return [dict(row) for row in rows]
@@ -578,14 +604,25 @@ def finish_trip(data: Dict[str, Any]) -> None:
     conn.close()
 
 
+def _record_select_sql(where_clause: str = "") -> str:
+    return f"""
+        SELECT
+            r.*,
+            u.gender AS gender,
+            COALESCE(NULLIF(u.unit_other, ''), u.unit, '') AS unit,
+            COALESCE(NULLIF(u.department_other, ''), u.department, '') AS department,
+            COALESCE(NULLIF(u.team_other, ''), u.team, '') AS team
+        FROM trip_records r
+        LEFT JOIN users u ON u.username = r.username
+        {where_clause}
+        ORDER BY r.id DESC
+    """
+
+
 def get_user_records(username: str) -> List[Dict[str, Any]]:
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("""
-    SELECT * FROM trip_records
-    WHERE username=?
-    ORDER BY id DESC
-    """, (username,))
+    cur.execute(_record_select_sql("WHERE r.username=?"), (username,))
     rows = cur.fetchall()
     conn.close()
     return [dict(row) for row in rows]
@@ -594,7 +631,8 @@ def get_user_records(username: str) -> List[Dict[str, Any]]:
 def get_all_records() -> List[Dict[str, Any]]:
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("SELECT * FROM trip_records ORDER BY id DESC")
+    cur.execute(_record_select_sql())
     rows = cur.fetchall()
     conn.close()
     return [dict(row) for row in rows]
+
