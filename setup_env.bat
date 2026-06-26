@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 cd /d %~dp0
 set OCR_ASCII_HOME=%~d0\CarFleetSystem_OCR_Cache
 set HOME=%OCR_ASCII_HOME%
@@ -8,77 +9,63 @@ set PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
 set PIP_TRUSTED_HOST=pypi.tuna.tsinghua.edu.cn
 set PIP_DISABLE_PIP_VERSION_CHECK=1
 
-chcp 65001 >nul
-
 echo ========================================
-echo CarFleetSystem Production Environment Setup
-echo Fix: NumPy ABI mismatch for PaddleOCR/OpenCV
+echo CarFleetSystem Environment Setup
 echo ========================================
+echo This will recreate venv and install all required packages.
 echo.
+pause
 
-echo [1/9] Remove old venv completely...
-if exist venv rmdir /s /q venv
+if exist venv (
+    echo [1/10] Remove old venv completely...
+    rmdir /s /q venv
+) else (
+    echo [1/10] No old venv found.
+)
 
-echo [2/9] Create clean venv...
+echo [2/10] Create clean venv...
 python -m venv venv
 if errorlevel 1 goto fail
 
-echo [3/9] Upgrade pip/setuptools/wheel...
+echo [3/10] Upgrade pip/setuptools/wheel...
 venv\Scripts\python.exe -m pip install --upgrade pip setuptools wheel --timeout 120 --retries 10
 if errorlevel 1 goto fail
 
-echo [4/9] Remove conflicting packages if any...
-venv\Scripts\python.exe -m pip uninstall -y paddleocr paddlex modelscope torch torchvision torchaudio paddlepaddle opencv-python opencv-contrib-python opencv-python-headless numpy Pillow pillow
+echo [4/10] Remove conflicting packages if any...
+venv\Scripts\python.exe -m pip uninstall -y paddleocr paddlex modelscope torch torchvision torchaudio paddlepaddle opencv-python opencv-contrib-python opencv-python-headless numpy Pillow pillow protobuf
 
-echo [5/9] Install NumPy 1.x first. Do NOT use NumPy 2.x with PaddleOCR 2.7.3...
-<<<<<<< HEAD
+echo [5/10] Install NumPy/Pillow/protobuf lock...
 venv\Scripts\python.exe -m pip install --no-cache-dir numpy==1.26.4 Pillow==10.4.0 protobuf==3.20.2 --timeout 120 --retries 10
-=======
-venv\Scripts\python.exe -m pip install --no-cache-dir numpy==1.26.4 Pillow==10.4.0 --timeout 120 --retries 10
->>>>>>> 55a777a7d7dc7a1e307a6131d3c93efa554ea949
 if errorlevel 1 goto fail
 
-echo [6/9] Install OpenCV contrib without changing NumPy...
+echo [6/10] Install OpenCV contrib without changing NumPy...
 venv\Scripts\python.exe -m pip install --no-cache-dir --no-deps opencv-contrib-python==4.6.0.66 --timeout 120 --retries 10
 if errorlevel 1 goto fail
 
-echo [7/9] Install web/report packages...
-venv\Scripts\python.exe -m pip install --no-cache-dir flask==3.0.3 werkzeug==3.0.3 pandas==2.2.2 openpyxl==3.1.5 alibabacloud_dysmsapi20170525==3.1.2 --timeout 120 --retries 10
+echo [7/10] Install web/report/SMS packages...
+venv\Scripts\python.exe -m pip install --no-cache-dir flask==3.0.3 werkzeug==3.0.3 gunicorn==22.0.0 pandas==2.2.2 openpyxl==3.1.5 alibabacloud_dysmsapi20170525==3.1.2 --timeout 120 --retries 10
 if errorlevel 1 goto fail
 
-echo [8/9] Install PaddleOCR packages...
+echo [8/10] Install PaddleOCR packages...
 venv\Scripts\python.exe -m pip install --no-cache-dir paddlepaddle==2.6.2 paddleocr==2.7.3 --timeout 180 --retries 10
 if errorlevel 1 goto fail
 
-<<<<<<< HEAD
-echo [9/9] Repair Paddle mandatory dependencies...
-venv\Scripts\python.exe -m pip install --no-cache-dir --force-reinstall protobuf==3.20.2 --timeout 120 --retries 10
-if errorlevel 1 goto fail
-
-echo [10/10] Final ABI lock: force NumPy 1.26.4 and single OpenCV package...
-=======
-echo [9/9] Final ABI lock: force NumPy 1.26.4 and single OpenCV package...
->>>>>>> 55a777a7d7dc7a1e307a6131d3c93efa554ea949
+echo [9/10] Final ABI lock: NumPy 1.26.4, protobuf 3.20.2, and single OpenCV package...
 venv\Scripts\python.exe -m pip uninstall -y opencv-python opencv-python-headless
-venv\Scripts\python.exe -m pip install --no-cache-dir --force-reinstall --no-deps numpy==1.26.4 opencv-contrib-python==4.6.0.66 --timeout 120 --retries 10
+venv\Scripts\python.exe -m pip install --no-cache-dir --force-reinstall --no-deps numpy==1.26.4 protobuf==3.20.2 opencv-contrib-python==4.6.0.66 --timeout 120 --retries 10
 if errorlevel 1 goto fail
 
-echo.
-echo Running environment diagnosis...
+echo [10/10] Verify environment...
 venv\Scripts\python.exe check_numpy_abi.py
 if errorlevel 1 goto fail
 venv\Scripts\python.exe diagnose_env.py
 if errorlevel 1 goto fail
-
-echo.
-echo Warming up OCR models into English cache path...
 venv\Scripts\python.exe warmup_ocr.py
 if errorlevel 1 goto fail
 
 echo.
 echo ========================================
-echo Environment setup finished.
-echo Start with run.bat.
+echo Environment setup finished. Start with run.bat.
 echo ========================================
 pause
 exit /b 0
@@ -86,9 +73,7 @@ exit /b 0
 :fail
 echo.
 echo ========================================
-echo Environment setup failed.
-echo Please copy the error above to ChatGPT.
-echo If the error mentions NumPy ABI, close run.bat and run fix_numpy_abi.bat.
+echo Environment setup failed. Copy the error above to ChatGPT.
 echo ========================================
 pause
 exit /b 1

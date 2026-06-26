@@ -14,13 +14,21 @@ if not exist venv\Scripts\python.exe (
     exit /b 1
 )
 
-echo Checking NumPy ABI...
+echo Checking Python/OCR environment...
 venv\Scripts\python.exe check_numpy_abi.py
 if errorlevel 1 (
     echo.
-    echo Please close this window, run fix_numpy_abi.bat, then run run.bat again.
-    pause
-    exit /b 1
+    echo Environment check failed. Running automatic repair...
+    call fix_numpy_abi.bat
+    if errorlevel 1 exit /b 1
+    echo.
+    echo Rechecking Python/OCR environment...
+    venv\Scripts\python.exe check_numpy_abi.py
+    if errorlevel 1 (
+        echo Environment is still invalid. Copy the error above to ChatGPT.
+        pause
+        exit /b 1
+    )
 )
 
 venv\Scripts\python.exe app.py
