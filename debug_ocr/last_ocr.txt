@@ -1,0 +1,28 @@
+stage: fast_success
+image_path: D:\Projects\car\carSystem\uploads\finish_9d5951f6e6f1459d98fed17531df9be3_-1.jpg
+ocr_fast_mode: True
+ocr_fallback_enabled: True
+ocr_early_stop: True
+ocr_use_angle_cls: False
+ocr_max_roi_images: 5
+ocr_min_auto_mileage: 1000
+ocr_home: D:\CarFleetSystem_OCR_Cache
+ocr_home_is_ascii: True
+model_files_found: True
+
+warnings:
+- 无
+
+tokens:
+1. text='530km' | conf=0.9866 | source=yellow_plate
+2. text='贵AD71262' | conf=0.9983 | source=yellow_plate
+3. text='kwh/100km' | conf=0.9102 | source=mileage_precise
+4. text='总里程：71402km' | conf=0.9856 | source=mileage_precise
+5. text='kW' | conf=0.8239 | source=mileage_precise
+6. text='88%' | conf=0.9959 | source=mileage_precise
+7. text='530km' | conf=0.9936 | source=mileage_precise
+8. text='NO' | conf=0.9812 | source=mileage_precise
+9. text='贵AD71262' | conf=0.9984 | source=mileage_precise
+
+raw_text:
+530km | 贵AD71262 | kwh/100km | 总里程：71402km | kW | 88% | 530km | NO | 贵AD71262

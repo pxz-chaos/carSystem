@@ -1,0 +1,15 @@
+[Unit]
+Description=CarFleetSystem Flask Service
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/CarFleetSystem
+EnvironmentFile=/opt/CarFleetSystem/.env
+ExecStart=/opt/CarFleetSystem/venv/bin/gunicorn -c gunicorn.conf.py app:app
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

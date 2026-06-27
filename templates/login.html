@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-5 col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <h3 class="mb-3 text-center">用户登录</h3>
+                <form method="post">
+                    <div class="mb-3">
+                        <label class="form-label">用户名 / 手机号</label>
+                        <input class="form-control" name="identifier" placeholder="请输入用户名或手机号" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">密码</label>
+                        <input class="form-control" name="password" type="password" placeholder="请输入密码" required>
+                    </div>
+                    <button class="btn btn-primary w-100">登录</button>
+                    <a class="btn btn-outline-primary w-100 mt-2" href="{{ url_for('sms_login') }}">手机号验证码登录</a>
+                </form>
+                <div class="d-flex justify-content-between small mt-3">
+                    <a href="{{ url_for('register') }}">注册新用户</a>
+                    <a href="{{ url_for('forgot_password') }}">忘记密码？</a>
+                </div>
+                <div class="text-muted small mt-3">
+                    系统不再提供默认管理员密码。首次启动请先设置管理员账号；支持密码登录和手机号短信验证码登录。
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

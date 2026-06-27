@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h3 class="mb-0">行程记录</h3>
+                <div class="text-muted small">{{ '管理员视图：显示全部司机记录' if is_admin else '司机视图：只显示自己的记录' }}</div>
+            </div>
+            <div class="btn-group">
+                <a class="btn btn-success" href="{{ url_for('export') }}">{{ '导出全部 Excel' if is_admin else '导出我的 Excel' }}</a>
+                <a class="btn btn-outline-success" href="{{ url_for('export_images') }}">{{ '导出全部图片' if is_admin else '导出我的图片' }}</a>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover align-middle">
+                <thead class="table-light">
+                <tr>
+                    <th>ID</th>{% if is_admin %}<th>司机</th>{% endif %}<th>车牌</th><th>出发时间</th><th>回场时间</th>
+                    <th>出发里程</th><th>回场里程</th><th>本次行驶</th>
+                    <th>出发地点</th><th>回场地点</th><th>状态</th><th>异常提示</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for r in records %}
+                <tr>
+                    <td>{{ r.id }}</td>
+                    {% if is_admin %}<td>{{ r.username }}</td>{% endif %}
+                    <td>{{ r.plate }}</td>
+                    <td>{{ r.start_time }}</td>
+                    <td>{{ r.end_time or '-' }}</td>
+                    <td>{{ r.start_mileage if r.start_mileage is not none else '-' }}</td>
+                    <td>{{ r.end_mileage if r.end_mileage is not none else '-' }}</td>
+                    <td>{{ r.distance ~ ' KM' if r.distance is not none else '待复核' }}</td>
+                    <td>{{ r.start_address }}</td>
+                    <td>{{ r.end_address or '-' }}</td>
+                    <td>{{ r.status }}</td>
+                    <td class="text-warning small">{{ r.warning or '' }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="{{ 12 if is_admin else 11 }}" class="text-center text-muted">暂无记录</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

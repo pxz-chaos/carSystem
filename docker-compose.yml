@@ -1,0 +1,11 @@
+services:
+  fleet-system:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./database:/app/database
+      - ./uploads:/app/uploads
+      - ./exports:/app/exports
+      - ./.env:/app/.env:ro
+    restart: unless-stopped

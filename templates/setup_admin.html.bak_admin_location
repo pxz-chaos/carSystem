@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+        <div class="card shadow-sm border-primary">
+            <div class="card-body p-4">
+                <h3 class="mb-2 text-center">首次设置管理员</h3>
+                <p class="text-muted small text-center mb-4">
+                    系统不再内置默认管理员密码。首次启动或检测到旧版 admin/admin123 时，必须由你自己设置管理员账号和密码。
+                </p>
+                <form method="post">
+                    <div class="mb-3">
+                        <label class="form-label">管理员用户名</label>
+                        <input class="form-control" name="username" placeholder="2-30位中文、字母、数字或下划线" required autofocus>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">管理员手机号</label>
+                        <input class="form-control" name="phone" inputmode="tel" placeholder="11位手机号，用于登录和找回密码" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">管理员密码</label>
+                        <input class="form-control" name="password" type="password" placeholder="至少8位，不能使用 admin123 / 123456 等弱密码" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">确认管理员密码</label>
+                        <input class="form-control" name="password2" type="password" placeholder="再次输入管理员密码" required>
+                    </div>
+                    <button class="btn btn-primary w-100">保存管理员账号</button>
+                </form>
+                <div class="alert alert-warning small mt-3 mb-0">
+                    请牢记管理员密码。管理员可以管理用户权限，并导出全部司机的 Excel 和图片。
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

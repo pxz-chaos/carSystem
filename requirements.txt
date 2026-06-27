@@ -1,0 +1,15 @@
+flask==3.0.3
+werkzeug==3.0.3
+gunicorn==22.0.0
+pandas==2.2.2
+openpyxl==3.1.5
+Pillow==10.4.0
+numpy==1.26.4
+# PaddleOCR 2.7.x uses cv2. Keep only opencv-contrib-python to avoid OpenCV conflicts.
+opencv-contrib-python==4.6.0.66
+# PaddlePaddle 2.6.x / PaddleOCR 2.7.x are stable with protobuf 3.x on Windows.
+protobuf==3.20.2
+paddlepaddle==2.6.2
+paddleocr==2.7.3
+# V8.1 SMS provider: Aliyun SMS SDK. Console provider works without network/SMS credentials.
+alibabacloud_dysmsapi20170525==3.1.2

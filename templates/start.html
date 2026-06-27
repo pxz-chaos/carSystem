@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <h3 class="mb-3">出车登记</h3>
+                <div class="alert alert-info small">手动输入优先；未填完整时可上传照片自动识别，识别后必须确认。</div>
+                <form method="post" enctype="multipart/form-data" data-location-form>
+                    <div class="mb-3">
+                        <label class="form-label">上传出车照片（可选）</label>
+                        <input type="file" name="image" accept="image/*" capture="environment" class="form-control" data-compress-image>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">车牌号</label>
+                            <input class="form-control" name="plate_override" placeholder="如：贵ADL6725">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">出发里程</label>
+                            <input class="form-control" name="mileage_override" inputmode="numeric" pattern="[0-9]*" placeholder="如：53351">
+                        </div>
+                    </div>
+                    <input type="hidden" id="lat" name="lat">
+                    <input type="hidden" id="lng" name="lng">
+                    <div class="location-status text-muted small mb-3">正在获取定位...</div>
+                    <button class="btn btn-primary w-100">提交</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

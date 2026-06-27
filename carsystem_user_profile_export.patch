@@ -1,0 +1,382 @@
+diff --git a/app.py b/app.py
+index 0000000..0000000 100644
+--- a/app.py
++++ b/app.py
+@@
+ from dao.record_dao import (
+  create_user,
+  get_all_records,
+  get_all_users,
++ get_user,
+  get_user_by_phone,
+  initial_admin_setup_required,
+  get_running_trip,
+@@
+ PHONE_RE = re.compile(r"^1\d{10}$")
+ USERNAME_RE = re.compile(r"^[A-Za-z0-9_\u4e00-\u9fa5]{2,30}$")
+ ADMIN_ROLE_NAMES = {"管理员", "超级管理员", "admin", "administrator"}
++GENDER_CHOICES = {"男", "女"}
++UNIT_CHOICES = {"遵义供电局", "其他"}
++DEPARTMENT_CHOICES = {"变电管理一所", "变电管理二所", "其他"}
++TEAM_CHOICES = {
++    "继保班",
++    "自动化班",
++    "检修一班",
++    "检修二班",
++    "试验一班",
++    "试验二班",
++    "电源班",
++    "智能作业班",
++    "其他",
++}
+ _LAST_AUTO_CLEANUP_CHECK = 0.0
++
++
++def _validate_profile_choice(field_name: str, value: str, choices: set, other_value: str = "") -> None:
++    value = (value or "").strip()
++    other_value = (other_value or "").strip()
++    if value not in choices:
++        raise ValueError(f"请选择{field_name}")
++    if value == "其他":
++        if not other_value:
++            raise ValueError(f"请输入{field_name}")
++        if len(other_value) > 60:
++            raise ValueError(f"{field_name}不能超过60个字符")
++
+ 
+-def _validate_register_form(username: str, phone: str, password: str, password2: str) -> None:
++def _validate_register_form(
++    username: str,
++    phone: str,
++    password: str,
++    password2: str,
++    gender: str,
++    unit: str,
++    department: str,
++    team: str,
++    unit_other: str = "",
++    department_other: str = "",
++    team_other: str = "",
++) -> None:
+  if not USERNAME_RE.match(username or ""):
+   raise ValueError("用户名需为2-30位中文、字母、数字或下划线")
+  if not PHONE_RE.match(phone or ""):
+   raise ValueError("请输入11位手机号")
+  if len(password or "") < 6:
+   raise ValueError("密码至少6位")
+  if password != password2:
+   raise ValueError("两次输入的密码不一致")
++ if gender not in GENDER_CHOICES:
++  raise ValueError("请选择性别")
++ _validate_profile_choice("单位", unit, UNIT_CHOICES, unit_other)
++ _validate_profile_choice("部门", department, DEPARTMENT_CHOICES, department_other)
++ _validate_profile_choice("班组", team, TEAM_CHOICES, team_other)
+@@
+ @app.route("/register", methods=["GET", "POST"])
+ def register():
+  if request.method == "POST":
+   username = request.form.get("username", "").strip()
+   phone = request.form.get("phone", "").strip()
+   password = request.form.get("password", "").strip()
+   password2 = request.form.get("password2", "").strip()
++  gender = request.form.get("gender", "").strip()
++  unit = request.form.get("unit", "").strip()
++  department = request.form.get("department", "").strip()
++  team = request.form.get("team", "").strip()
++  unit_other = request.form.get("unit_other", "").strip()
++  department_other = request.form.get("department_other", "").strip()
++  team_other = request.form.get("team_other", "").strip()
+   try:
+-   _validate_register_form(username, phone, password, password2)
+-   create_user(username=username, password=password, phone=phone, role="司机")
++   _validate_register_form(
++    username,
++    phone,
++    password,
++    password2,
++    gender,
++    unit,
++    department,
++    team,
++    unit_other,
++    department_other,
++    team_other,
++   )
++   create_user(
++    username=username,
++    password=password,
++    phone=phone,
++    role="司机",
++    gender=gender,
++    unit=unit,
++    department=department,
++    team=team,
++    unit_other=unit_other,
++    department_other=department_other,
++    team_other=team_other,
++   )
+    flash("注册成功，请登录", "success")
+    return redirect(url_for("login"))
+   except Exception as exc:
+    flash(str(exc), "danger")
+  return render_template("register.html")
++
++@app.route("/profile")
++@login_required
++def profile():
++ username = session.get("username")
++ user = get_user(username)
++ if not user:
++  flash("用户不存在，请重新登录", "warning")
++  return redirect(url_for("logout"))
++ return render_template("profile.html", user=user)
+ 
+ @app.route("/forgot-password", methods=["GET", "POST"])
+ def forgot_password():
+diff --git a/dao/record_dao.py b/dao/record_dao.py
+index 0000000..0000000 100644
+--- a/dao/record_dao.py
++++ b/dao/record_dao.py
+@@
+ ADMIN_ROLE_NAMES = {"管理员", "超级管理员", "admin", "administrator"}
++
++
++USER_PROFILE_SELECT = """
++id,
++username,
++role,
++phone,
++gender,
++CASE WHEN unit='其他' AND COALESCE(unit_other,'')<>'' THEN unit_other ELSE COALESCE(unit,'') END AS unit,
++CASE WHEN department='其他' AND COALESCE(department_other,'')<>'' THEN department_other ELSE COALESCE(department,'') END AS department,
++CASE WHEN team='其他' AND COALESCE(team_other,'')<>'' THEN team_other ELSE COALESCE(team,'') END AS team,
++unit_other,
++department_other,
++team_other,
++created_at
++"""
++
++
++def _display_choice(value: str, other_value: str = "") -> str:
++    value = (value or "").strip()
++    other_value = (other_value or "").strip()
++    if value == "其他" and other_value:
++        return other_value
++    return value
++
++
++def _record_select_sql() -> str:
++    return """
++    SELECT
++        r.*,
++        u.gender AS gender,
++        CASE WHEN u.unit='其他' AND COALESCE(u.unit_other,'')<>'' THEN u.unit_other ELSE COALESCE(u.unit,'') END AS unit,
++        CASE WHEN u.department='其他' AND COALESCE(u.department_other,'')<>'' THEN u.department_other ELSE COALESCE(u.department,'') END AS department,
++        CASE WHEN u.team='其他' AND COALESCE(u.team_other,'')<>'' THEN u.team_other ELSE COALESCE(u.team,'') END AS team
++    FROM trip_records r
++    LEFT JOIN users u ON u.username = r.username
++    """
+@@
+-def get_user_by_phone(phone: str) -> Optional[Dict[str, Any]]:
++def get_user_by_phone(phone: str) -> Optional[Dict[str, Any]]:
+  phone = (phone or "").strip()
+  if not phone:
+   return None
+  conn = get_conn()
+  cur = conn.cursor()
+- cur.execute("SELECT username, role, phone FROM users WHERE phone=? LIMIT 1", (phone,))
++ cur.execute(f"SELECT {USER_PROFILE_SELECT} FROM users WHERE phone=? LIMIT 1", (phone,))
+  row = cur.fetchone()
+  conn.close()
+  return dict(row) if row else None
+@@
+-def create_user(username: str, password: str, phone: str, role: str = "司机") -> int:
++def create_user(
++    username: str,
++    password: str,
++    phone: str,
++    role: str = "司机",
++    gender: str = "",
++    unit: str = "",
++    department: str = "",
++    team: str = "",
++    unit_other: str = "",
++    department_other: str = "",
++    team_other: str = "",
++) -> int:
+  username = (username or "").strip()
+  phone = (phone or "").strip()
++ gender = (gender or "").strip()
++ unit = _display_choice(unit, unit_other)
++ department = _display_choice(department, department_other)
++ team = _display_choice(team, team_other)
++ unit_other = (unit_other or "").strip()
++ department_other = (department_other or "").strip()
++ team_other = (team_other or "").strip()
+  if username_exists(username):
+   raise ValueError("用户名已存在")
+  if phone and phone_exists(phone):
+   raise ValueError("手机号已被注册")
+  conn = get_conn()
+  cur = conn.cursor()
+  cur.execute(
+-  """ INSERT INTO users(username, password_hash, role, phone) VALUES(?,?,?,?) """,
+-  (username, _hash_password(password), role, phone),
++  """
++  INSERT INTO users(
++      username, password_hash, role, phone,
++      gender, unit, department, team,
++      unit_other, department_other, team_other
++  ) VALUES(?,?,?,?,?,?,?,?,?,?,?)
++  """,
++  (
++      username,
++      _hash_password(password),
++      role,
++      phone,
++      gender,
++      unit,
++      department,
++      team,
++      unit_other,
++      department_other,
++      team_other,
++  ),
+  )
+  user_id = cur.lastrowid
+  conn.commit()
+  conn.close()
+  return int(user_id)
+@@
+ def get_user(username: str) -> Optional[Dict[str, Any]]:
+  conn = get_conn()
+  cur = conn.cursor()
+- cur.execute("SELECT id, username, role, phone, created_at FROM users WHERE username=?", ((username or "").strip(),))
++ cur.execute(f"SELECT {USER_PROFILE_SELECT} FROM users WHERE username=?", ((username or "").strip(),))
+  row = cur.fetchone()
+  conn.close()
+  return dict(row) if row else None
+ 
+ def get_all_users() -> List[Dict[str, Any]]:
+  conn = get_conn()
+  cur = conn.cursor()
+- cur.execute("SELECT id, username, role, phone, created_at FROM users ORDER BY id ASC")
++ cur.execute(f"SELECT {USER_PROFILE_SELECT} FROM users ORDER BY id ASC")
+  rows = cur.fetchall()
+  conn.close()
+  return [dict(row) for row in rows]
+@@
+ def get_user_records(username: str) -> List[Dict[str, Any]]:
+  conn = get_conn()
+  cur = conn.cursor()
+- cur.execute(""" SELECT * FROM trip_records WHERE username=? ORDER BY id DESC """, (username,))
++ cur.execute(_record_select_sql() + " WHERE r.username=? ORDER BY r.id DESC", (username,))
+  rows = cur.fetchall()
+  conn.close()
+  return [dict(row) for row in rows]
+ 
+ def get_all_records() -> List[Dict[str, Any]]:
+  conn = get_conn()
+  cur = conn.cursor()
+- cur.execute("SELECT * FROM trip_records ORDER BY id DESC")
++ cur.execute(_record_select_sql() + " ORDER BY r.id DESC")
+  rows = cur.fetchall()
+  conn.close()
+  return [dict(row) for row in rows]
+diff --git a/templates/base.html b/templates/base.html
+index 0000000..0000000 100644
+--- a/templates/base.html
++++ b/templates/base.html
+@@
+-  <span class="navbar-text me-3">{{ session.get('username') }} / {{ session.get('role') }}</span>
++  <a class="navbar-text me-3 text-decoration-none d-flex align-items-center gap-2"
++     href="{{ url_for('profile') }}"
++     title="查看用户基本信息">
++    <span class="rounded-circle bg-light text-dark d-inline-flex justify-content-center align-items-center fw-bold"
++          style="width:32px;height:32px;">
++      {{ (session.get('username') or '用')[:1] }}
++    </span>
++    <span>{{ session.get('username') }} / {{ session.get('role') }}</span>
++  </a>
+ 
+   <a class="btn btn-outline-light btn-sm" href="{{ url_for('logout') }}">退出</a>
+diff --git a/templates/profile.html b/templates/profile.html
+new file mode 100644
+index 0000000..0000000
+--- /dev/null
++++ b/templates/profile.html
+@@
++{% extends 'base.html' %}
++{% block content %}
++
++<div class="row justify-content-center">
++  <div class="col-md-7 col-lg-6">
++    <div class="card shadow-sm">
++      <div class="card-body p-4">
++        <div class="d-flex align-items-center gap-3 mb-4">
++          <div class="rounded-circle bg-primary text-white d-flex justify-content-center align-items-center fw-bold fs-4"
++               style="width:64px;height:64px;">
++            {{ (user.username or '用')[:1] }}
++          </div>
++          <div>
++            <h3 class="mb-1">{{ user.username }}</h3>
++            <div class="text-muted">{{ user.role or '司机' }}</div>
++          </div>
++        </div>
++
++        <dl class="row mb-0">
++          <dt class="col-sm-4">手机号</dt>
++          <dd class="col-sm-8">{{ user.phone or '-' }}</dd>
++
++          <dt class="col-sm-4">性别</dt>
++          <dd class="col-sm-8">{{ user.gender or '-' }}</dd>
++
++          <dt class="col-sm-4">单位</dt>
++          <dd class="col-sm-8">{{ user.unit or '-' }}</dd>
++
++          <dt class="col-sm-4">部门</dt>
++          <dd class="col-sm-8">{{ user.department or '-' }}</dd>
++
++          <dt class="col-sm-4">班组</dt>
++          <dd class="col-sm-8">{{ user.team or '-' }}</dd>
++
++          <dt class="col-sm-4">注册时间</dt>
++          <dd class="col-sm-8">{{ user.created_at or '-' }}</dd>
++        </dl>
++      </div>
++    </div>
++  </div>
++</div>
++
++{% endblock %}
+diff --git a/templates/admin_users.html b/templates/admin_users.html
+index 0000000..0000000 100644
+--- a/templates/admin_users.html
++++ b/templates/admin_users.html
+@@
+   <th>用户名</th>
+ 
+   <th>手机号</th>
++
++  <th>单位</th>
++
++  <th>部门</th>
++
++  <th>班组</th>
+ 
+   <th>当前角色</th>
+@@
+   <td>{{ u.username }}</td>
+ 
+   <td>{{ u.phone or '-' }}</td>
++
++  <td>{{ u.unit or '-' }}</td>
++
++  <td>{{ u.department or '-' }}</td>
++
++  <td>{{ u.team or '-' }}</td>
+ 
+   <td>
+@@
+- <tr><td colspan="6" class="text-center text-muted">暂无用户</td></tr>
++ <tr><td colspan="9" class="text-center text-muted">暂无用户</td></tr>
