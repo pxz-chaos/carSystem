@@ -123,3 +123,24 @@ SMTP_USERNAME = os.environ.get("SMTP_USERNAME", "")
 SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
 SMTP_FROM_NAME = os.environ.get("SMTP_FROM_NAME", "车辆管理系统")
 SMTP_FROM_EMAIL = os.environ.get("SMTP_FROM_EMAIL", SMTP_USERNAME)
+
+
+# =========================================================
+# Production hardening: upload/geocode/runtime knobs
+# =========================================================
+# Limit request upload size. Nginx client_max_body_size should be the same.
+MAX_CONTENT_LENGTH_MB = int(os.environ.get("MAX_CONTENT_LENGTH_MB", "8"))
+# Uploaded photos are converted to JPEG and resized before being stored.
+IMAGE_MAX_DIMENSION = int(os.environ.get("IMAGE_MAX_DIMENSION", os.environ.get("IMAGE_MAX_WIDTH", "1280")))
+IMAGE_JPEG_QUALITY = int(os.environ.get("IMAGE_JPEG_QUALITY", "75"))
+IMAGE_EXPORT_JPEG_QUALITY = int(os.environ.get("IMAGE_EXPORT_JPEG_QUALITY", "85"))
+# Reverse geocoding. Default uses OpenStreetMap Nominatim with cache + throttle.
+REVERSE_GEOCODE_ENABLED = os.environ.get("REVERSE_GEOCODE_ENABLED", "1") == "1"
+REVERSE_GEOCODE_PROVIDER = os.environ.get("REVERSE_GEOCODE_PROVIDER", "nominatim").strip().lower()
+REVERSE_GEOCODE_CACHE_PATH = os.environ.get("REVERSE_GEOCODE_CACHE_PATH", os.path.join(DATABASE_DIR, "reverse_geocode_cache.sqlite3"))
+REVERSE_GEOCODE_TIMEOUT_SECONDS = int(os.environ.get("REVERSE_GEOCODE_TIMEOUT_SECONDS", "3"))
+REVERSE_GEOCODE_LANGUAGE = os.environ.get("REVERSE_GEOCODE_LANGUAGE", "zh-CN,zh,en")
+REVERSE_GEOCODE_COUNTRYCODES = os.environ.get("REVERSE_GEOCODE_COUNTRYCODES", "cn")
+NOMINATIM_ENDPOINT = os.environ.get("NOMINATIM_ENDPOINT", "https://nominatim.openstreetmap.org/reverse")
+NOMINATIM_USER_AGENT = os.environ.get("NOMINATIM_USER_AGENT", "CarFleetSystem/1.0 (admin@example.com)")
+NOMINATIM_EMAIL = os.environ.get("NOMINATIM_EMAIL", "")

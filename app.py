@@ -181,6 +181,15 @@ def _validate_admin_setup_form(
 def create_app():
     app = Flask(__name__)
     app.secret_key = SECRET_KEY
+    try:
+        from config import MAX_CONTENT_LENGTH_MB
+        app.config["MAX_CONTENT_LENGTH"] = int(MAX_CONTENT_LENGTH_MB) * 1024 * 1024
+    except Exception:
+        app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024
+    app.config["SESSION_COOKIE_HTTPONLY"] = True
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+    if os.environ.get("SESSION_COOKIE_SECURE", "0") == "1":
+        app.config["SESSION_COOKIE_SECURE"] = True
 
     os.makedirs(UPLOAD_DIR, exist_ok=True)
     os.makedirs(EXPORT_DIR, exist_ok=True)
@@ -248,6 +257,11 @@ def create_app():
             # 自动清理失败不能影响司机登记。管理员可到“数据维护”页面手动查看和清理。
             pass
 
+    @app.errorhandler(413)
+    def request_entity_too_large(_error):
+        flash("上传图片过大，请压缩后再上传", "danger")
+        return redirect(request.referrer or url_for("dashboard"))
+
     @app.context_processor
     def inject_permissions():
         return {"is_admin": is_admin()}
@@ -275,6 +289,7 @@ def create_app():
         if request.method == "POST":
             username = request.form.get("username", "").strip()
             phone = request.form.get("phone", "").strip()
+            email = request.form.get("email", "").strip().lower()
             password = request.form.get("password", "").strip()
             password2 = request.form.get("password2", "").strip()
             gender = request.form.get("gender", "").strip()
@@ -299,6 +314,8 @@ def create_app():
                     department_other,
                     team_other,
                 )
+                if email and not EMAIL_RE.match(email):
+                    raise ValueError("请输入有效邮箱地址")
                 setup_initial_admin(
                     username=username,
                     password=password,
@@ -394,6 +411,7 @@ def create_app():
         if request.method == "POST":
             username = request.form.get("username", "").strip()
             phone = request.form.get("phone", "").strip()
+            email = request.form.get("email", "").strip().lower()
             password = request.form.get("password", "").strip()
             password2 = request.form.get("password2", "").strip()
             gender = request.form.get("gender", "").strip()
@@ -418,6 +436,8 @@ def create_app():
                     department_other,
                     team_other,
                 )
+                if email and not EMAIL_RE.match(email):
+                    raise ValueError("请输入有效邮箱地址")
                 create_user(
                     username=username,
                     password=password,

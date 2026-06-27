@@ -28,8 +28,15 @@ def _hash_password(password: str) -> str:
 
 def get_conn() -> sqlite3.Connection:
     os.makedirs(DATABASE_DIR, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=5)
     conn.row_factory = sqlite3.Row
+    try:
+        conn.execute("PRAGMA busy_timeout=5000")
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA synchronous=NORMAL")
+        conn.execute("PRAGMA foreign_keys=ON")
+    except Exception:
+        pass
     return conn
 
 
@@ -122,6 +129,11 @@ def init_db() -> None:
     )
     """)
     cur.execute("CREATE INDEX IF NOT EXISTS idx_sms_codes_phone_purpose ON sms_codes(phone, purpose, created_at)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_trip_records_username_status ON trip_records(username, status, id DESC)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_trip_records_status_time ON trip_records(status, COALESCE(end_time, start_time, date))")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_trip_records_username_time ON trip_records(username, COALESCE(end_time, start_time, date))")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)")
 
     for username, password, role in DEFAULT_USERS:
         cur.execute("""

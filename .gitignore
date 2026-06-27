@@ -1,3 +1,28 @@
 __pycache__/
 *.pyc
 *.bak
+
+# local env
+.env
+venv/
+.venv/
+
+# python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# runtime data
+database/*.db
+database/*.db-*
+uploads/
+exports/
+logs/
+*.log
+debug_ocr/
+
+# local patch artifacts
+.patch_backup_*/
+carsystem_prod_patch.sh
+PRODUCTION_UBUNTU_2G.md
