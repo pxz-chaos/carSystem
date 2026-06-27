@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <h3 class="mb-3">回场登记</h3>
+                <div class="alert alert-info">
+                    当前车辆：<strong>{{ trip.plate }}</strong><br>
+                    出发里程：{{ trip.start_mileage }} KM<br>
+                    出发时间：{{ trip.start_time }}<br>
+                    出发地点：{{ trip.start_address }}
+                </div>
+                <div class="alert alert-warning small">回场里程以手动填写为准；未填写时可上传照片识别，识别后必须确认。</div>
+                <form method="post" enctype="multipart/form-data" data-location-form>
+                    <input type="hidden" name="trip_id" value="{{ trip.id }}">
+                    <div class="mb-3">
+                        <label class="form-label">车牌号（可手动更正）</label>
+                        <input class="form-control" name="plate_override" value="{{ trip.plate }}" placeholder="如：贵ADL6725" autocomplete="off">
+                        <div class="form-text">默认使用当前车辆；如果车牌登记/识别错误，可以在这里手动修改。</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">回场里程</label>
+                        <input class="form-control" name="mileage_override" inputmode="numeric" pattern="[0-9]*" placeholder="如：46930">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label d-block">上传回场照片（可选）</label>
+                        <div class="d-grid gap-2 d-sm-flex">
+                            <label class="btn btn-outline-primary flex-fill mb-0">
+                                拍照上传
+                                <input type="file" name="image_camera" accept="image/*" capture="environment" class="visually-hidden" data-upload-picker data-compress-image>
+                            </label>
+                            <label class="btn btn-outline-secondary flex-fill mb-0">
+                                添加照片
+                                <input type="file" name="image_gallery" accept="image/*" class="visually-hidden" data-upload-picker data-compress-image>
+                            </label>
+                        </div>
+                        <div class="form-text" data-upload-name>未选择照片</div>
+                    </div>
+                    <input type="hidden" id="lat" name="lat">
+                    <input type="hidden" id="lng" name="lng">
+                    <div class="location-status text-muted small mb-3">正在获取定位...</div>
+                    <button class="btn btn-success w-100">提交</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

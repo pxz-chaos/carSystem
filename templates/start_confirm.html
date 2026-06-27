@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="card shadow-sm border-warning">
+            <div class="card-body p-4">
+                <h3 class="mb-3 text-warning">确认出车识别结果</h3>
+                <div class="alert alert-warning small">请核对车牌号和出发里程。修改后点击确认，确认值才会入库。</div>
+                <form method="post">
+                    <input type="hidden" name="action" value="confirm_ocr">
+                    <div class="mb-3">
+                        <label class="form-label">车牌号</label>
+                        <input class="form-control form-control-lg" name="plate_override" value="{{ preview.plate or '' }}" placeholder="如：贵ADL6725" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">出发里程</label>
+                        <input class="form-control form-control-lg" name="mileage_override" inputmode="numeric" pattern="[0-9]*" value="{{ preview.mileage or '' }}" placeholder="如：53351" required>
+                    </div>
+                    <div class="alert alert-light border small">
+                        <div><strong>OCR置信度：</strong>{{ '%.3f'|format(preview.confidence or 0) }}</div>
+                        {% if preview.raw_text %}<div class="mt-2"><strong>OCR原文：</strong>{{ preview.raw_text }}</div>{% endif %}
+                        {% if preview.warnings %}<div class="mt-2"><strong>提示：</strong>{{ preview.warnings|join('；') }}</div>{% endif %}
+                    </div>
+                    <button class="btn btn-success w-100 mb-2">确认并保存</button>
+                    <a class="btn btn-outline-secondary w-100" href="{{ url_for('start') }}">返回修改</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

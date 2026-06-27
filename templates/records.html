@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <div>
+                <h3 class="mb-0">行程记录</h3>
+                <div class="text-muted small">
+                    {{ '管理员视图：显示全部司机记录，可删除错误行程' if is_admin else '司机视图：只显示自己的记录，可删除自己的错误行程' }}。
+                    删除前必须输入当前登录密码。
+                </div>
+            </div>
+            <div class="btn-group">
+                <a class="btn btn-success" href="{{ url_for('export') }}">{{ '导出全部 Excel' if is_admin else '导出我的 Excel' }}</a>
+                <a class="btn btn-outline-success" href="{{ url_for('export_images') }}">{{ '导出全部图片' if is_admin else '导出我的图片' }}</a>
+            </div>
+        </div>
+
+        <div class="alert alert-warning py-2 small">
+            删除行程会从数据库移除该条记录；勾选“同时删除照片”时，会一并删除出发/回场照片。此操作不可恢复，请确认是错误行程后再删除。
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover align-middle">
+                <thead class="table-light">
+                <tr>
+                    <th>ID</th>
+                    {% if is_admin %}<th>司机</th>{% endif %}
+                    <th>车牌</th>
+                    <th>出发时间</th>
+                    <th>回场时间</th>
+                    <th>出发里程</th>
+                    <th>回场里程</th>
+                    <th>本次行驶</th>
+                    <th>出发地点</th>
+                    <th>回场地点</th>
+                    <th>状态</th>
+                    <th>异常提示</th>
+                    <th style="min-width: 230px;">操作</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for r in records %}
+                <tr>
+                    <td>{{ r.id }}</td>
+                    {% if is_admin %}<td>{{ r.username }}</td>{% endif %}
+                    <td>{{ r.plate }}</td>
+                    <td>{{ r.start_time }}</td>
+                    <td>{{ r.end_time or '-' }}</td>
+                    <td>{{ r.start_mileage if r.start_mileage is not none else '-' }}</td>
+                    <td>{{ r.end_mileage if r.end_mileage is not none else '-' }}</td>
+                    <td>{{ r.distance ~ ' KM' if r.distance is not none else '待复核' }}</td>
+                    <td>{{ r.start_address }}</td>
+                    <td>{{ r.end_address or '-' }}</td>
+                    <td>{{ r.status }}</td>
+                    <td class="text-warning small">{{ r.warning or '' }}</td>
+                    <td>
+                        <details>
+                            <summary class="btn btn-sm btn-outline-danger">删除错误行程</summary>
+                            <form method="post"
+                                  action="{{ url_for('delete_record') }}"
+                                  class="mt-2 border rounded p-2 bg-light"
+                                  onsubmit="return confirm('确认删除行程记录 #{{ r.id }}？此操作不可恢复。');">
+                                <input type="hidden" name="record_id" value="{{ r.id }}">
+                                <label class="form-label small mb-1">当前登录密码</label>
+                                <input class="form-control form-control-sm mb-2"
+                                       type="password"
+                                       name="login_password"
+                                       placeholder="请输入{{ '管理员' if is_admin else '当前账号' }}登录密码"
+                                       autocomplete="current-password"
+                                       required>
+                                <div class="form-check small mb-2">
+                                    <input class="form-check-input"
+                                           type="checkbox"
+                                           name="delete_photos"
+                                           value="1"
+                                           id="delete_photos_{{ r.id }}"
+                                           checked>
+                                    <label class="form-check-label" for="delete_photos_{{ r.id }}">同时删除出发/回场照片</label>
+                                </div>
+                                <button class="btn btn-danger btn-sm w-100" type="submit">确认删除</button>
+                            </form>
+                        </details>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="{{ 13 if is_admin else 12 }}" class="text-center text-muted">暂无记录</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

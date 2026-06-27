@@ -1,0 +1,11 @@
+{
+  "name": "车队管理系统",
+  "short_name": "车队系统",
+  "description": "司机出车、回场登记和车队数据管理",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8f9fa",
+  "theme_color": "#212529",
+  "lang": "zh-CN"
+}

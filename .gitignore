@@ -1,0 +1,48 @@
+__pycache__/
+*.pyc
+*.bak
+
+# local env
+.env
+venv/
+.venv/
+
+# python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# runtime data
+database/*.db
+database/*.db-*
+uploads/
+exports/
+logs/
+*.log
+debug_ocr/
+
+# local patch artifacts
+.patch_backup_*/
+carsystem_prod_patch.sh
+PRODUCTION_UBUNTU_2G.md
+
+# local runtime data and patch helpers
+debug_ocr/*.txt
+.patch_backup_email_*/
+carsystem_*_patch.sh
+carsystem_email_*fix.sh
+carsystem_email_reset_final_fix.sh
+carsystem_mobile_upload_pwa_patch.sh
+.patch_backup_mobile_pwa_*/
+# reverse geocode local cache
+database/reverse_geocode_cache.sqlite3
+database/reverse_geocode_cache.sqlite3-*
+
+# local patch scripts
+carsystem_location_amap_patch.sh
+carsystem_manual_plate_input_patch.sh
+.patch_backup_manual_plate_*/
+
+# local/runtime files
+carsystem_delete_trip_with_password_patch.sh

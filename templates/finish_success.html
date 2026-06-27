@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="card shadow-sm border-success">
+            <div class="card-body p-4">
+                <h3 class="text-success">回场成功</h3>
+                <p>车牌号：<strong>{{ trip.plate }}</strong></p>
+                <p>出发里程：{{ trip.start_mileage }} KM</p>
+                <p>回场里程：{{ trip.end_mileage }} KM</p>
+                <p>出发地点：{{ trip.start_address }}</p>
+                <p>回场地点：{{ trip.end_address }}</p>
+                <p class="fs-4">本次行驶：{% if trip.distance is not none %}<strong>{{ trip.distance }}</strong> KM{% else %}<strong class="text-warning">待人工复核</strong>{% endif %}</p>
+                {% if trip.warning %}<div class="alert alert-warning">{{ trip.warning }}</div>{% endif %}
+                <a class="btn btn-primary" href="{{ url_for('dashboard') }}">返回首页</a>
+                <a class="btn btn-outline-success" href="{{ url_for('export') }}">导出 Excel</a>
+                <a class="btn btn-outline-success" href="{{ url_for('export_images') }}">导出图片</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
