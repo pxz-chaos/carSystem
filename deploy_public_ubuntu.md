@@ -1,147 +1,199 @@
-# CarFleetSystem V8.1 公网部署说明（Ubuntu 22.04/24.04）
+# Ubuntu 22.04 公网部署说明
 
-## 1. 准备条件
+本文档适用于将 CarFleetSystem 部署到阿里云 Ubuntu 22.04 服务器。
 
-1. 一台云服务器，推荐 2核4G 起步；如果要在服务器上跑 PaddleOCR，建议 4G 以上内存。
-2. 云服务器安全组放行：80、443、22。
-3. 可选：域名解析到服务器公网 IP。
-4. 阿里云短信服务：完成实名认证，申请短信签名和验证码模板。
-
-## 2. 上传项目
-
-把项目上传到服务器：
-
-```bash
-sudo mkdir -p /opt/CarFleetSystem
-sudo chown -R $USER:$USER /opt/CarFleetSystem
-# 将本项目文件上传/解压到 /opt/CarFleetSystem
-cd /opt/CarFleetSystem
-```
-
-## 3. 安装系统依赖
+## 1. 安装系统依赖
 
 ```bash
 sudo apt update
-sudo apt install -y python3 python3-venv python3-pip nginx unzip libgl1 libglib2.0-0
+sudo apt install -y python3 python3-venv python3-pip nginx git sqlite3
 ```
 
-## 4. 安装 Python 环境
+## 2. 拉取代码
 
 ```bash
-cd /opt/CarFleetSystem
-python3 -m venv venv
-./venv/bin/python -m pip install --upgrade pip setuptools wheel
-./venv/bin/pip install -r requirements.txt
+cd /opt
+sudo git clone https://github.com/pxz-chaos/carSystem.git carsystem
+sudo chown -R $USER:$USER /opt/carsystem
+cd /opt/carsystem
 ```
 
-## 5. 配置 .env
+## 3. 创建虚拟环境
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -U pip
+pip install -r requirements.txt
+```
+
+## 4. 创建 .env
 
 ```bash
 cp .env.example .env
 nano .env
 ```
 
-公网真实短信请至少修改：
+至少修改：
 
 ```env
-SECRET_KEY=改成很长的随机字符串
-SMS_PROVIDER=aliyun
-ALIYUN_ACCESS_KEY_ID=你的AccessKeyId
-ALIYUN_ACCESS_KEY_SECRET=你的AccessKeySecret
-ALIYUN_SMS_SIGN_NAME=你的短信签名
-ALIYUN_SMS_TEMPLATE_CODE_LOGIN=登录验证码模板CODE
-ALIYUN_SMS_TEMPLATE_CODE_RESET=找回密码验证码模板CODE
+SECRET_KEY=换成足够长的随机字符串
+APP_DEBUG=0
+APP_HOST=127.0.0.1
+APP_PORT=8000
+WEB_CONCURRENCY=1
+GUNICORN_THREADS=4
+GUNICORN_TIMEOUT=180
 ```
 
-短信模板变量默认使用 `code`。如果你的模板变量不是 `${code}`，请修改：
+2G 内存服务器不建议开多个 worker。
 
-```env
-ALIYUN_SMS_TEMPLATE_PARAM_NAME=你的变量名
-```
-
-## 6. 初始化数据库和管理员
-
-先临时启动一次：
+## 5. 创建运行目录
 
 ```bash
-./venv/bin/python app.py
+mkdir -p database uploads exports logs debug_ocr
 ```
 
-浏览器访问：
-
-```text
-http://服务器公网IP:5000
-```
-
-首次打开会要求设置管理员。设置完成后按 `Ctrl+C` 停止临时服务。
-
-如果云服务器安全组没有放行 5000，也可以先跳过，等 Nginx 配好后通过 80 端口设置管理员。
-
-## 7. 配置 Gunicorn + systemd
+## 6. Gunicorn 测试启动
 
 ```bash
-sudo cp deploy/carfleet.service /etc/systemd/system/carfleet.service
-sudo chown -R www-data:www-data /opt/CarFleetSystem
+source venv/bin/activate
+gunicorn -c gunicorn.conf.py 'app:create_app()'
+```
+
+如果没有报错，按 `Ctrl+C` 停止。
+
+## 7. systemd 服务
+
+```bash
+sudo tee /etc/systemd/system/carsystem.service >/dev/null <<'SERVICE_EOF'
+[Unit]
+Description=CarFleetSystem Flask App
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/carsystem
+EnvironmentFile=/opt/carsystem/.env
+ExecStart=/opt/carsystem/venv/bin/gunicorn -c /opt/carsystem/gunicorn.conf.py 'app:create_app()'
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+SERVICE_EOF
+```
+
+授权目录：
+
+```bash
+sudo chown -R www-data:www-data /opt/carsystem
+```
+
+启动：
+
+```bash
 sudo systemctl daemon-reload
-sudo systemctl enable carfleet
-sudo systemctl start carfleet
-sudo systemctl status carfleet --no-pager
+sudo systemctl enable carsystem
+sudo systemctl start carsystem
+sudo systemctl status carsystem
 ```
 
-## 8. 配置 Nginx
-
-编辑 `deploy/nginx_carfleet.conf`，把：
-
-```nginx
-server_name your-domain.com;
-```
-
-改成你的域名；没有域名就写服务器公网 IP 或 `_`。
-
-然后执行：
+查看日志：
 
 ```bash
-sudo cp deploy/nginx_carfleet.conf /etc/nginx/sites-available/carfleet
-sudo ln -sf /etc/nginx/sites-available/carfleet /etc/nginx/sites-enabled/carfleet
+sudo journalctl -u carsystem -f
+```
+
+## 8. Nginx 配置
+
+```bash
+sudo tee /etc/nginx/sites-available/carsystem >/dev/null <<'NGINX_EOF'
+server {
+    listen 80;
+    server_name your-domain.com;
+
+    client_max_body_size 8m;
+    proxy_read_timeout 180s;
+    proxy_connect_timeout 30s;
+    proxy_send_timeout 180s;
+
+    location /static/ {
+        alias /opt/carsystem/static/;
+        expires 7d;
+    }
+
+    location /uploads/ {
+        alias /opt/carsystem/uploads/;
+        expires 7d;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+NGINX_EOF
+```
+
+启用站点：
+
+```bash
+sudo ln -sf /etc/nginx/sites-available/carsystem /etc/nginx/sites-enabled/carsystem
 sudo nginx -t
 sudo systemctl reload nginx
-```
-
-现在可以访问：
-
-```text
-http://你的域名
-或 http://服务器公网IP
 ```
 
 ## 9. HTTPS
 
-如果你有域名，建议安装证书：
+建议绑定域名并配置 HTTPS，否则手机定位、PWA 和拍照权限体验可能受影响。
 
 ```bash
 sudo apt install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d 你的域名
+sudo certbot --nginx -d your-domain.com
 ```
 
-## 10. 常用维护命令
+HTTPS 生效后可在 `.env` 中设置：
+
+```env
+SESSION_COOKIE_SECURE=1
+```
+
+然后重启：
 
 ```bash
-sudo systemctl restart carfleet
-sudo systemctl status carfleet --no-pager
-sudo journalctl -u carfleet -f
+sudo systemctl restart carsystem
+sudo systemctl reload nginx
+```
+
+## 10. 数据备份
+
+```bash
+mkdir -p /opt/carsystem_backup
+cp /opt/carsystem/database/vehicle.db /opt/carsystem_backup/vehicle_$(date +%Y%m%d_%H%M%S).db
+```
+
+照片目录 `uploads/` 应定期备份。照片量很大时，建议迁移到独立数据盘或对象存储。
+
+## 11. 常用维护命令
+
+```bash
+sudo systemctl restart carsystem
+sudo systemctl status carsystem
+sudo journalctl -u carsystem -f
 sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-## 11. 数据备份
+## 12. 更新代码
 
-至少定期备份：
-
-```text
-database/vehicle.db
-uploads/
-exports/
-.env
+```bash
+cd /opt/carsystem
+sudo -u www-data git pull
+sudo -u www-data /opt/carsystem/venv/bin/pip install -r requirements.txt
+sudo systemctl restart carsystem
 ```
-
-`.env` 包含短信密钥，不要发给外人。
