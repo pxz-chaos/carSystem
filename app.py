@@ -343,6 +343,8 @@ def create_app():
                     department_other=department_other,
                     team_other=team_other,
                 )
+                if email:
+                    set_user_email(username, email)
                 session.clear()
                 flash("管理员账号已设置，请使用你刚设置的账号和密码登录", "success")
                 return redirect(url_for("login"))
@@ -466,6 +468,8 @@ def create_app():
                     department_other=department_other,
                     team_other=team_other,
                 )
+                if email:
+                    set_user_email(username, email)
                 flash("注册成功，请登录", "success")
                 return redirect(url_for("login"))
             except Exception as exc:
