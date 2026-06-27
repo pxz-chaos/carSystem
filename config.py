@@ -144,3 +144,8 @@ REVERSE_GEOCODE_COUNTRYCODES = os.environ.get("REVERSE_GEOCODE_COUNTRYCODES", "c
 NOMINATIM_ENDPOINT = os.environ.get("NOMINATIM_ENDPOINT", "https://nominatim.openstreetmap.org/reverse")
 NOMINATIM_USER_AGENT = os.environ.get("NOMINATIM_USER_AGENT", "CarFleetSystem/1.0 (admin@example.com)")
 NOMINATIM_EMAIL = os.environ.get("NOMINATIM_EMAIL", "")
+
+# Email password reset code settings
+EMAIL_CODE_TTL_SECONDS = int(os.environ.get("EMAIL_CODE_TTL_SECONDS", "300"))
+EMAIL_SEND_COOLDOWN_SECONDS = int(os.environ.get("EMAIL_SEND_COOLDOWN_SECONDS", "60"))
+EMAIL_MAX_ATTEMPTS = int(os.environ.get("EMAIL_MAX_ATTEMPTS", "5"))
