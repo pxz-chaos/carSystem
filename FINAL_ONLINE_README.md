@@ -1,4 +1,4 @@
-# CarFleetSystem 上线前检查清单
+# 车辆行程管理系统（生产部署说明）
 
 本文件用于正式部署前逐项确认，避免把本地测试文件、数据库、照片或密钥上传到 GitHub。
 
@@ -85,7 +85,7 @@ SMTP_FROM_EMAIL=你的邮箱@qq.com
 
 ```env
 REVERSE_GEOCODE_PROVIDER=nominatim
-NOMINATIM_USER_AGENT=CarFleetSystem/1.0 (your_email@example.com)
+NOMINATIM_USER_AGENT=VehicleTripSystem/1.0 (your_email@example.com)
 NOMINATIM_EMAIL=your_email@example.com
 ```
 

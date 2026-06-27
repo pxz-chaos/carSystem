@@ -1,6 +1,6 @@
 {
-  "name": "车队管理系统",
-  "short_name": "车队系统",
+  "name": "车辆行程管理系统",
+  "short_name": "车辆行程",
   "description": "司机出车、回场登记和车队数据管理",
   "start_url": "/",
   "scope": "/",

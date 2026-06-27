@@ -1,6 +1,6 @@
-# CarFleetSystem 车辆行程管理系统
+# 车辆行程管理系统
 
-CarFleetSystem 是一个面向车队/司机的轻量级车辆行程管理系统，适合几十到上百名司机通过手机浏览器完成出车、回场、拍照上传、定位记录、里程登记和数据导出。
+车辆行程管理系统 是一个面向车队/司机的轻量级车辆行程管理系统，适合几十到上百名司机通过手机浏览器完成出车、回场、拍照上传、定位记录、里程登记和数据导出。
 
 系统采用 Flask + SQLite 架构，默认不依赖 Redis、不依赖大型数据库，适合部署在 2G 内存、40G 硬盘的小型 Ubuntu 服务器上。照片会自动压缩保存，减少服务器硬盘压力。
 
@@ -166,7 +166,7 @@ EMAIL_PROVIDER=console
 REVERSE_GEOCODE_ENABLED=1
 REVERSE_GEOCODE_PROVIDER=nominatim
 REVERSE_GEOCODE_TIMEOUT_SECONDS=8
-NOMINATIM_USER_AGENT=CarFleetSystem/1.0 (your_email@example.com)
+NOMINATIM_USER_AGENT=VehicleTripSystem/1.0 (your_email@example.com)
 NOMINATIM_EMAIL=your_email@example.com
 REVERSE_GEOCODE_LANGUAGE=zh-CN,zh,en
 REVERSE_GEOCODE_COUNTRYCODES=cn
@@ -228,7 +228,7 @@ EMAIL_MAX_ATTEMPTS=5
 REVERSE_GEOCODE_ENABLED=1
 REVERSE_GEOCODE_PROVIDER=nominatim
 REVERSE_GEOCODE_TIMEOUT_SECONDS=8
-NOMINATIM_USER_AGENT=CarFleetSystem/1.0 (your_email@example.com)
+NOMINATIM_USER_AGENT=VehicleTripSystem/1.0 (your_email@example.com)
 NOMINATIM_EMAIL=your_email@example.com
 REVERSE_GEOCODE_LANGUAGE=zh-CN,zh,en
 REVERSE_GEOCODE_COUNTRYCODES=cn

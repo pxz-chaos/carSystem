@@ -1,6 +1,6 @@
-# Ubuntu 22.04 公网部署说明
+# 车辆行程管理系统 Ubuntu 部署文档
 
-本文档适用于将 CarFleetSystem 部署到阿里云 Ubuntu 22.04 服务器。
+本文档适用于将 车辆行程管理系统 部署到阿里云 Ubuntu 22.04 服务器。
 
 ## 1. 安装系统依赖
 
@@ -68,7 +68,7 @@ gunicorn -c gunicorn.conf.py 'app:create_app()'
 ```bash
 sudo tee /etc/systemd/system/carsystem.service >/dev/null <<'SERVICE_EOF'
 [Unit]
-Description=CarFleetSystem Flask App
+Description=车辆行程管理系统 Flask App
 After=network.target
 
 [Service]
