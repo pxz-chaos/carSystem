@@ -8,8 +8,18 @@
                 <div class="alert alert-info small">手动输入优先；未填完整时可上传照片自动识别，识别后必须确认。</div>
                 <form method="post" enctype="multipart/form-data" data-location-form>
                     <div class="mb-3">
-                        <label class="form-label">上传出车照片（可选）</label>
-                        <input type="file" name="image" accept="image/*" capture="environment" class="form-control" data-compress-image>
+                        <label class="form-label d-block">上传出车照片（可选）</label>
+                        <div class="d-grid gap-2 d-sm-flex">
+                            <label class="btn btn-outline-primary flex-fill mb-0">
+                                拍照上传
+                                <input type="file" name="image_camera" accept="image/*" capture="environment" class="visually-hidden" data-upload-picker data-compress-image>
+                            </label>
+                            <label class="btn btn-outline-secondary flex-fill mb-0">
+                                添加照片
+                                <input type="file" name="image_gallery" accept="image/*" class="visually-hidden" data-upload-picker data-compress-image>
+                            </label>
+                        </div>
+                        <div class="form-text" data-upload-name>未选择照片</div>
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">

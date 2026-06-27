@@ -26,3 +26,12 @@ debug_ocr/
 .patch_backup_*/
 carsystem_prod_patch.sh
 PRODUCTION_UBUNTU_2G.md
+
+# local runtime data and patch helpers
+debug_ocr/*.txt
+.patch_backup_email_*/
+carsystem_*_patch.sh
+carsystem_email_*fix.sh
+carsystem_email_reset_final_fix.sh
+carsystem_mobile_upload_pwa_patch.sh
+.patch_backup_mobile_pwa_*/

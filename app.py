@@ -77,6 +77,7 @@ from utils.sms_utils import (
     generate_sms_code,
     send_sms_code,
 )
+from utils.email_utils import EMAIL_PURPOSE_RESET, generate_email_code, send_email_code
 
 
 PHONE_RE = re.compile(r"^1\d{10}$")
@@ -184,6 +185,21 @@ def _validate_admin_setup_form(
     if team == "其他" and not (team_other or "").strip():
         raise ValueError("请输入管理员班组")
 
+
+
+def _get_uploaded_image_file():
+    """Return the selected upload file from mobile camera/gallery inputs.
+
+    Mobile browsers behave differently when capture=environment is present: some
+    open the camera directly and hide the album picker. The templates therefore
+    provide two inputs. This helper accepts either input while keeping backward
+    compatibility with the old single field named "image".
+    """
+    for field_name in ("image_gallery", "image_camera", "image"):
+        file_obj = request.files.get(field_name)
+        if file_obj and getattr(file_obj, "filename", ""):
+            return file_obj
+    return None
 
 def create_app():
     app = Flask(__name__)
@@ -601,7 +617,7 @@ def create_app():
 
                 plate_override = request.form.get("plate_override", "").strip()
                 mileage_override = request.form.get("mileage_override", "").strip()
-                image_path = save_upload_optional(request.files.get("image"), "start")
+                image_path = save_upload_optional(_get_uploaded_image_file(), "start")
 
                 # 手动同时填写车牌和里程时，手动值优先，直接保存，不跑 OCR。
                 if plate_override and mileage_override:
@@ -687,7 +703,7 @@ def create_app():
                     return render_template("finish_success.html", trip=result)
 
                 mileage_override = request.form.get("mileage_override", "").strip()
-                image_path = save_upload_optional(request.files.get("image"), "finish")
+                image_path = save_upload_optional(_get_uploaded_image_file(), "finish")
 
                 # 手动填写回场里程时，手动值优先，直接保存，不跑 OCR。
                 if mileage_override:
