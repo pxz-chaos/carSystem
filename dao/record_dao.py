@@ -16,6 +16,9 @@ from config import (
     SMS_CODE_TTL_SECONDS,
     SMS_MAX_ATTEMPTS,
     SMS_SEND_COOLDOWN_SECONDS,
+    EMAIL_CODE_TTL_SECONDS,
+    EMAIL_MAX_ATTEMPTS,
+    EMAIL_SEND_COOLDOWN_SECONDS,
 )
 
 
@@ -128,7 +131,21 @@ def init_db() -> None:
         created_at INTEGER NOT NULL
     )
     """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS email_codes(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT NOT NULL,
+            purpose TEXT NOT NULL,
+            code_hash TEXT NOT NULL,
+            expires_at INTEGER NOT NULL,
+            used_at INTEGER,
+            attempts INTEGER NOT NULL DEFAULT 0,
+            send_ip TEXT,
+            created_at INTEGER NOT NULL
+        )
+    """)
     cur.execute("CREATE INDEX IF NOT EXISTS idx_sms_codes_phone_purpose ON sms_codes(phone, purpose, created_at)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_email_codes_email_purpose ON email_codes(email, purpose, created_at)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_trip_records_username_status ON trip_records(username, status, id DESC)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_trip_records_status_time ON trip_records(status, COALESCE(end_time, start_time, date))")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_trip_records_username_time ON trip_records(username, COALESCE(end_time, start_time, date))")
@@ -363,6 +380,170 @@ def reset_password_by_email(username: str, email: str, new_password: str) -> boo
     conn.commit()
     conn.close()
     return changed
+
+
+
+def email_exists(email: str) -> bool:
+    email = (email or "").strip().lower()
+    if not email:
+        return False
+    conn = get_conn()
+    cur = conn.cursor()
+    _ensure_user_columns(cur)
+    cur.execute("SELECT 1 FROM users WHERE lower(email)=? LIMIT 1", (email,))
+    row = cur.fetchone()
+    conn.close()
+    return row is not None
+
+
+def set_user_email(username: str, email: str) -> None:
+    username = (username or "").strip()
+    email = (email or "").strip().lower()
+    if not username:
+        raise ValueError("用户名不能为空")
+    if not email:
+        raise ValueError("邮箱不能为空")
+    conn = get_conn()
+    cur = conn.cursor()
+    _ensure_user_columns(cur)
+    cur.execute("SELECT id FROM users WHERE lower(email)=? AND username<>? LIMIT 1", (email, username))
+    if cur.fetchone():
+        conn.close()
+        raise ValueError("该邮箱已被注册")
+    cur.execute("UPDATE users SET email=? WHERE username=?", (email, username))
+    conn.commit()
+    conn.close()
+
+
+def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
+    email = (email or "").strip().lower()
+    if not email:
+        return None
+    conn = get_conn()
+    cur = conn.cursor()
+    _ensure_user_columns(cur)
+    cur.execute(
+        """
+        SELECT id, username, role, phone, email, gender, unit, department, team,
+               unit_other, department_other, team_other, created_at
+        FROM users
+        WHERE lower(email)=?
+        LIMIT 1
+        """,
+        (email,),
+    )
+    row = cur.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def reset_password_by_email(username: str, email: str, new_password: str) -> bool:
+    username = (username or "").strip()
+    email = (email or "").strip().lower()
+    conn = get_conn()
+    cur = conn.cursor()
+    _ensure_user_columns(cur)
+    cur.execute(
+        "UPDATE users SET password_hash=? WHERE username=? AND lower(email)=?",
+        (_hash_password(new_password), username, email),
+    )
+    changed = cur.rowcount > 0
+    conn.commit()
+    conn.close()
+    return changed
+
+
+def _hash_email_code(email: str, purpose: str, code: str) -> str:
+    payload = f"{(email or '').strip().lower()}|{purpose}|{code}".encode("utf-8")
+    key = str(SECRET_KEY).encode("utf-8")
+    return hmac.new(key, payload, hashlib.sha256).hexdigest()
+
+
+def can_send_email_code(email: str, purpose: str) -> bool:
+    email = (email or "").strip().lower()
+    purpose = (purpose or "").strip()
+    now = int(time.time())
+    cutoff = now - int(EMAIL_SEND_COOLDOWN_SECONDS)
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT 1 FROM email_codes
+        WHERE email=? AND purpose=? AND created_at>=?
+        LIMIT 1
+        """,
+        (email, purpose, cutoff),
+    )
+    row = cur.fetchone()
+    conn.close()
+    return row is None
+
+
+def create_email_code(email: str, purpose: str, code: str, send_ip: str = "") -> int:
+    email = (email or "").strip().lower()
+    purpose = (purpose or "").strip()
+    if not email:
+        raise ValueError("邮箱不能为空")
+    if not purpose:
+        raise ValueError("验证码用途不能为空")
+    if not can_send_email_code(email, purpose):
+        raise ValueError(f"邮箱验证码发送太频繁，请 {EMAIL_SEND_COOLDOWN_SECONDS} 秒后再试")
+    now = int(time.time())
+    expires_at = now + int(EMAIL_CODE_TTL_SECONDS)
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT INTO email_codes(email, purpose, code_hash, expires_at, send_ip, created_at)
+        VALUES(?,?,?,?,?,?)
+        """,
+        (email, purpose, _hash_email_code(email, purpose, code), expires_at, send_ip, now),
+    )
+    code_id = int(cur.lastrowid)
+    conn.commit()
+    conn.close()
+    return code_id
+
+
+def verify_email_code(email: str, purpose: str, code: str) -> bool:
+    email = (email or "").strip().lower()
+    purpose = (purpose or "").strip()
+    code = (code or "").strip()
+    if not email or not purpose or not code:
+        return False
+    now = int(time.time())
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT id, code_hash, expires_at, attempts, used_at
+        FROM email_codes
+        WHERE email=? AND purpose=?
+        ORDER BY created_at DESC
+        LIMIT 1
+        """,
+        (email, purpose),
+    )
+    row = cur.fetchone()
+    if row is None:
+        conn.close()
+        return False
+    code_id = int(row["id"])
+    attempts = int(row["attempts"] or 0)
+    used_at = row["used_at"]
+    expires_at = int(row["expires_at"] or 0)
+    if used_at is not None or now > expires_at or attempts >= int(EMAIL_MAX_ATTEMPTS):
+        conn.close()
+        return False
+    cur.execute("UPDATE email_codes SET attempts=attempts+1 WHERE id=?", (code_id,))
+    expected_hash = str(row["code_hash"])
+    actual_hash = _hash_email_code(email, purpose, code)
+    ok = secrets.compare_digest(expected_hash, actual_hash)
+    if ok:
+        cur.execute("UPDATE email_codes SET used_at=? WHERE id=?", (now, code_id))
+    conn.commit()
+    conn.close()
+    return bool(ok)
 
 def get_user_by_phone(phone: str) -> Optional[Dict[str, Any]]:
     phone = (phone or "").strip()
