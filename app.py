@@ -21,6 +21,7 @@ from config import (
     APP_PORT,
     SECRET_KEY,
     SMS_CODE_TTL_SECONDS,
+    EMAIL_CODE_TTL_SECONDS,
     UPLOAD_DIR,
     EXPORT_DIR,
     DATA_RETENTION_MONTHS,
@@ -266,7 +267,7 @@ def create_app():
             raise ValueError("请输入有效邮箱地址")
         code = generate_email_code()
         create_email_code(email=email, purpose=purpose, code=code, send_ip=_remote_ip())
-        send_email_code(to_email=email, code=code, purpose=purpose)
+        send_email_code(email=email, code=code, purpose=purpose)
 
     def _maybe_auto_cleanup() -> None:
         """按配置进行轻量自动清理；默认关闭。"""
@@ -472,8 +473,11 @@ def create_app():
                     department_other,
                     team_other,
                 )
-                if email and not EMAIL_RE.match(email):
-                    raise ValueError("请输入有效邮箱地址")
+                if not EMAIL_RE.match(email or ""):
+                    raise ValueError("请输入有效邮箱")
+                if get_user_by_email(email):
+                    raise ValueError("该邮箱已被注册")
+
                 create_user(
                     username=username,
                     password=password,
@@ -487,8 +491,7 @@ def create_app():
                     department_other=department_other,
                     team_other=team_other,
                 )
-                if email:
-                    set_user_email(username, email)
+                set_user_email(username, email)
                 flash("注册成功，请登录", "success")
                 return redirect(url_for("login"))
             except Exception as exc:
@@ -499,67 +502,46 @@ def create_app():
     @app.route("/forgot-password", methods=["GET", "POST"])
     def forgot_password():
         if request.method == "POST":
-            action = request.form.get("action", "reset_email").strip()
+            action = request.form.get("action", "reset").strip()
             username = request.form.get("username", "").strip()
             email = request.form.get("email", "").strip().lower()
-            phone = request.form.get("phone", "").strip()
-            email_code = request.form.get("email_code", "").strip()
-            sms_code = request.form.get("code", "").strip()
+            code = request.form.get("code", "").strip()
             password = request.form.get("password", "").strip()
             password2 = request.form.get("password2", "").strip()
+
             try:
                 if not username:
                     raise ValueError("请输入用户名")
+                if not EMAIL_RE.match(email or ""):
+                    raise ValueError("请输入注册时绑定的有效邮箱")
 
-                if action in {"send_email_code", "reset_email"}:
-                    if not EMAIL_RE.match(email or ""):
-                        raise ValueError("请输入注册时绑定的邮箱")
+                if action == "send_code":
                     user = get_user_by_email(email)
                     if not user or user.get("username") != username:
                         raise ValueError("用户名和邮箱不匹配，无法发送验证码")
-                    if action == "send_email_code":
-                        _send_and_store_email_code(email, EMAIL_PURPOSE_RESET)
-                        flash(f"邮箱验证码已发送，有效期 {EMAIL_CODE_TTL_SECONDS // 60} 分钟", "success")
-                        return redirect(url_for("forgot_password"))
-
-                    if not email_code:
-                        raise ValueError("请输入邮箱验证码")
-                    if len(password or "") < 6:
-                        raise ValueError("新密码至少6位")
-                    if password != password2:
-                        raise ValueError("两次输入的新密码不一致")
-                    if not verify_email_code(email, EMAIL_PURPOSE_RESET, email_code):
-                        raise ValueError("邮箱验证码错误或已过期")
-                    if not reset_password_by_email(username, email, password):
-                        raise ValueError("用户名和邮箱不匹配，无法重置密码")
-                    flash("密码已通过邮箱验证码重置，请使用新密码登录", "success")
-                    return redirect(url_for("login"))
-
-                # 保留短信找回作为备用。
-                if not PHONE_RE.match(phone or ""):
-                    raise ValueError("请输入注册时绑定的11位手机号")
-                if action == "send_sms_code":
-                    user = get_user_by_phone(phone)
-                    if not user or user.get("username") != username:
-                        raise ValueError("用户名和手机号不匹配，无法发送验证码")
-                    _send_and_store_sms_code(phone, SMS_PURPOSE_RESET)
-                    flash(f"短信验证码已发送，有效期 {SMS_CODE_TTL_SECONDS // 60} 分钟", "success")
+                    _send_and_store_email_code(email, EMAIL_PURPOSE_RESET)
+                    flash(
+                        f"邮箱验证码已发送，有效期 {EMAIL_CODE_TTL_SECONDS // 60} 分钟。若未收到，请检查垃圾箱或 debug_ocr/email_codes.txt",
+                        "success",
+                    )
                     return redirect(url_for("forgot_password"))
 
-                if not sms_code:
-                    raise ValueError("请输入短信验证码")
+                if not code:
+                    raise ValueError("请输入邮箱验证码")
                 if len(password or "") < 6:
                     raise ValueError("新密码至少6位")
                 if password != password2:
                     raise ValueError("两次输入的新密码不一致")
-                if not verify_sms_code(phone, SMS_PURPOSE_RESET, sms_code):
-                    raise ValueError("短信验证码错误或已过期")
-                if not reset_password_by_phone(username, phone, password):
-                    raise ValueError("用户名和手机号不匹配，无法重置密码")
-                flash("密码已通过短信验证码重置，请使用新密码登录", "success")
+                if not verify_email_code(email, EMAIL_PURPOSE_RESET, code):
+                    raise ValueError("邮箱验证码错误、已使用或已过期")
+                if not reset_password_by_email(username, email, password):
+                    raise ValueError("用户名和邮箱不匹配，无法重置密码")
+
+                flash("密码已重置，请使用新密码登录", "success")
                 return redirect(url_for("login"))
             except Exception as exc:
                 flash(str(exc), "danger")
+
         return render_template("forgot_password.html")
 
     @app.route("/logout")
@@ -568,7 +550,7 @@ def create_app():
         flash("已退出登录", "info")
         return redirect(url_for("login"))
 
-    @app.route("/profile")
+    @app.route("/profile", methods=["GET", "POST"])
     @login_required
     def profile():
         user = get_user(session["username"])
@@ -576,17 +558,28 @@ def create_app():
             flash("用户不存在，请重新登录", "danger")
             return redirect(url_for("logout"))
 
+        if request.method == "POST":
+            action = request.form.get("action", "").strip()
+            try:
+                if action == "set_email":
+                    email = request.form.get("email", "").strip().lower()
+                    current_password = request.form.get("current_password", "")
+                    if not EMAIL_RE.match(email or ""):
+                        raise ValueError("请输入有效邮箱")
+                    if not verify_user_password(session["username"], current_password):
+                        raise ValueError("当前登录密码错误，邮箱未修改")
+                    owner = get_user_by_email(email)
+                    if owner and owner.get("username") != session["username"]:
+                        raise ValueError("该邮箱已被其他账号绑定")
+                    set_user_email(session["username"], email)
+                    flash("邮箱已保存，可用于邮箱验证码找回密码", "success")
+                    return redirect(url_for("profile"))
+                raise ValueError("未知操作")
+            except Exception as exc:
+                flash(str(exc), "danger")
+
+        user = get_user(session["username"])
         return render_template("profile.html", user=user)
-
-
-    @app.route("/api/reverse-geocode")
-    @login_required
-    def api_reverse_geocode():
-        """Return a human-readable address for mobile location preview."""
-        lat = request.args.get("lat", "")
-        lng = request.args.get("lng", "")
-        address = format_location(lat, lng)
-        return jsonify({"address": address})
 
     @app.route("/dashboard")
     @login_required

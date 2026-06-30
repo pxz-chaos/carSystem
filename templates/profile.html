@@ -1,9 +1,9 @@
 {% extends 'base.html' %}
+
 {% block content %}
-<div class="container mt-2"><div class="alert alert-info">邮箱：{{ user.email or '未填写' }}</div></div>
 <div class="row justify-content-center">
   <div class="col-md-8 col-lg-6">
-    <div class="card shadow-sm">
+    <div class="card shadow-sm mb-3">
       <div class="card-body p-4">
         <div class="d-flex align-items-center mb-4">
           <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3" style="width:64px;height:64px;font-size:28px;">
@@ -18,19 +18,34 @@
         <table class="table table-bordered align-middle mb-0">
           <tr><th style="width: 35%;">用户名</th><td>{{ user.username or '-' }}</td></tr>
           <tr><th>手机号</th><td>{{ user.phone or '-' }}</td></tr>
+          <tr><th>邮箱</th><td>{{ user.email or '-' }}</td></tr>
           <tr><th>性别</th><td>{{ user.gender or '-' }}</td></tr>
           <tr><th>单位</th><td>{{ user.unit_other if user.unit == '其他' and user.unit_other else (user.unit or '-') }}</td></tr>
           <tr><th>部门</th><td>{{ user.department_other if user.department == '其他' and user.department_other else (user.department or '-') }}</td></tr>
           <tr><th>班组</th><td>{{ user.team_other if user.team == '其他' and user.team_other else (user.team or '-') }}</td></tr>
           <tr><th>注册时间</th><td>{{ user.created_at or '-' }}</td></tr>
         </table>
+      </div>
+    </div>
 
-        <div class="mt-4 text-end">
-          <a class="btn btn-outline-secondary" href="{{ url_for('dashboard') }}">返回首页</a>
-  <a class="btn btn-outline-danger ms-2"
-     href="{{ url_for('logout') }}"
-     onclick="return confirm('确定要注销当前账号登录吗？');">注销账号</a>
-        </div>
+    <div class="card shadow-sm">
+      <div class="card-body p-4">
+        <h5 class="mb-3">绑定/修改找回密码邮箱</h5>
+        <form method="post">
+          <input type="hidden" name="action" value="set_email">
+          <div class="mb-3">
+            <label class="form-label">邮箱</label>
+            <input class="form-control" name="email" type="email" value="{{ user.email or '' }}" placeholder="用于邮箱验证码找回密码" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">当前登录密码</label>
+            <input class="form-control" name="current_password" type="password" placeholder="为了保护账号，请输入当前密码" required>
+          </div>
+          <div class="d-flex justify-content-between">
+            <a class="btn btn-outline-secondary" href="{{ url_for('dashboard') }}">返回首页</a>
+            <button class="btn btn-primary">保存邮箱</button>
+          </div>
+        </form>
       </div>
     </div>
   </div>

@@ -124,6 +124,11 @@ SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
 SMTP_FROM_NAME = os.environ.get("SMTP_FROM_NAME", "车辆管理系统")
 SMTP_FROM_EMAIL = os.environ.get("SMTP_FROM_EMAIL", SMTP_USERNAME)
 
+SMTP_TIMEOUT_SECONDS = int(os.environ.get("SMTP_TIMEOUT_SECONDS", "15"))
+SMTP_DEBUG = os.environ.get("SMTP_DEBUG", "0") == "1"
+# SMTP 失败时是否把验证码写入 debug_ocr/email_codes.txt。生产环境建议设为 0。
+EMAIL_SMTP_FALLBACK_TO_CONSOLE = os.environ.get("EMAIL_SMTP_FALLBACK_TO_CONSOLE", "1") == "1"
+
 
 # =========================================================
 # Production hardening: upload/geocode/runtime knobs
